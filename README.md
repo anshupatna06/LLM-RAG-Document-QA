@@ -137,7 +137,7 @@ LLM-RAG-Document-QA/
 pip install -r requirements.txt
 python app.py
 
-Add your documents inside:
+## Add your documents inside:
 
 data/documents/
 
