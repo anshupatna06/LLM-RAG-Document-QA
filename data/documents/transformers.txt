@@ -1,0 +1,5 @@
+Transformers are deep learning models based on the self-attention mechanism.
+They process sequences in parallel rather than sequentially.
+Transformers do not rely on recurrence or convolution.
+They are widely used in NLP tasks such as translation, summarization, and question answering.
+
