@@ -170,3 +170,9 @@ Conversational memory
 Anshu Pandey
 Machine Learning & Deep Learning Practitioner
 Focused on building systems from first principles
+
+## 📄 Sample Documents
+
+This repository includes sample text files in `data/documents/` to demonstrate
+how the RAG pipeline works. Users can replace these with their own documents.
+
