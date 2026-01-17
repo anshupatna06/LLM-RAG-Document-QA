@@ -1,0 +1,3 @@
+Machine learning is a field of artificial intelligence that enables systems to learn from data.
+Supervised learning uses labeled data, while unsupervised learning finds patterns without labels.
+Deep learning is a subset of machine learning based on neural networks.
