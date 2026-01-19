@@ -1,3 +1,4 @@
+
 # 📚 LLM-RAG-Document-QA
 
 A **Retrieval-Augmented Generation (RAG)** system built from scratch that answers user questions strictly using provided documents, with **grounding, source attribution, and evaluation metrics** to reduce hallucinations.
