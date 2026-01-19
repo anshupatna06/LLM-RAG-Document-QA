@@ -1,0 +1,2 @@
+Transformers use self-attention to model long-range dependencies.
+RAG systems reduce hallucination by grounding responses in retrieved context.
