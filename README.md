@@ -1,3 +1,14 @@
+---
+title: LLM RAG Document QA
+emoji: 🤖
+colorFrom: indigo
+colorTo: green
+sdk: streamlit
+sdk_version: 1.31.0
+python_version: 3.10
+app_file: streamlit_app.py
+---
+
 
 # 📚 LLM-RAG-Document-QA
 
