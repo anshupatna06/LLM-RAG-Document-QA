@@ -1,178 +1,202 @@
-# 📚 LLM-RAG-Document-QA
+📚 LLM-Powered RAG Document Question Answering System
 
-A **Retrieval-Augmented Generation (RAG)** system built from scratch that answers user questions strictly using provided documents, with **grounding, source attribution, and evaluation metrics** to reduce hallucinations.
+A production-style Retrieval-Augmented Generation (RAG) system that answers questions from user-uploaded documents with explainability, evaluation metrics, failure analysis, latency & cost monitoring.
 
----
+This project focuses not just on getting answers, but on understanding why an answer was generated or refused — a critical requirement for real-world LLM systems.
 
-## 🚀 Features
+🚀 Key Highlights
 
-- 🔍 Semantic document retrieval using dense embeddings
-- 🧠 LLM-based answer generation (Flan-T5)
-- 📌 Source attribution for transparency
-- 🧪 Evaluation metrics for grounding & faithfulness
-- ⚙️ Modular, extensible architecture
-- 🏗️ Built without LangChain (core concepts implemented manually)
+✅ End-to-end RAG pipeline (Retrieval → Filtering → Generation)
 
----
+🧠 Explainability dashboard (used vs ignored context)
 
-## 🧠 What is RAG?
+📊 Evaluation metrics (recall@k, coverage, faithfulness, grounding)
 
-Retrieval-Augmented Generation (RAG) combines:
-- **Information Retrieval** → fetch relevant knowledge
-- **Language Models** → reason and generate answers
+❌ Failure-case analysis (why the model refused to answer)
 
-This ensures answers are **grounded in documents**, not hallucinated.
+⏱️ Latency breakdown (retrieval vs LLM)
 
----
+💰 Cost estimation (token usage & estimated cost)
 
-## 🏗️ System Architecture
+🧩 Modular, extensible architecture
 
-User Question
-│
-▼
-Query Embedding
-│
-▼
-Vector Similarity Search
-│
-▼
-Top-K Relevant Chunks
-│
-▼
-Context + Question Prompt
-│
-▼
-LLM (Flan-T5)
-│
-▼
-Answer + Sources + Evaluation
+🌐 Local + public demo support (ngrok)
 
+🐳 Docker-ready (explored for cloud deployment)
 
----
+🏗️ System Architecture
+User Query
+   ↓
+Query Rewriting
+   ↓
+Vector Retrieval (Top-K)
+   ↓
+Similarity Filtering (Threshold)
+   ↓
+Context Selection
+   ↓
+LLM Answer Generation
+   ↓
+Evaluation + Explainability + Metrics
 
-## 🧩 Pipeline Breakdown
+🧠 Core Concepts Implemented
+🔹 Retrieval-Augmented Generation (RAG)
 
-### 1️⃣ Document Ingestion
-- Loads text files from `data/documents/`
-- Preserves source metadata (filename)
+Prevents hallucination by grounding answers in retrieved document chunks
 
-### 2️⃣ Chunking
-- Documents are split into overlapping chunks
-- Each chunk retains its source
+Uses similarity-based filtering to control relevance
 
-### 3️⃣ Embedding
-- Uses `all-MiniLM-L6-v2`
-- Chunks and queries are embedded into the same vector space
+🔹 Explainability (Why this answer?)
 
-### 4️⃣ Retrieval
-- Cosine similarity used to rank chunks
-- Top-K chunks retrieved
-- Similarity threshold applied to avoid weak matches
+Shows:
 
-### 5️⃣ Prompt Construction
-- Retrieved chunks are passed as context
-- Original user question is included to guide reasoning
+Which chunks influenced the answer
 
-### 6️⃣ Generation
-- LLM generates answer **strictly from context**
-- If context is insufficient → abstains
+Which chunks were retrieved but ignored
 
-### 7️⃣ Source Attribution
-- Displays which document chunks were used
-- Improves trust and explainability
+Why certain context was rejected
 
-### 8️⃣ Evaluation
-- **Recall@K** → checks retrieval quality
-- **Context Coverage** → measures grounding
-- **Faithfulness Check** → detects hallucination risk
+🔹 Failure-Case Dashboard
 
----
+When no answer is generated, the system explains:
 
-## 📊 Evaluation Metrics
+Similarity threshold violation
 
-| Metric | Description |
-|------|------------|
-| Recall@K | Did we retrieve relevant chunks? |
-| Context Coverage | How much answer overlaps with context |
-| Faithfulness | Binary grounding decision |
+Highest retrieved score
 
----
+Concrete steps to fix the issue (lower threshold, increase Top-K, add documents)
 
-## 📁 Project Structure
+🔹 Evaluation Metrics
+
+Recall@K – retrieval quality
+
+Context Coverage – how much of the answer is grounded
+
+Faithfulness – consistency with retrieved context
+
+Grounding Score – hallucination risk indicator
+
+🔹 Performance Monitoring
+
+Retrieval latency
+
+LLM latency
+
+Total request latency
+
+Token usage & estimated cost
+
+🗂️ Project Structure
 LLM-RAG-Document-QA/
 │
-├── app.py
+├── app.py                  # FastAPI backend (API version)
+├── streamlit_app.py        # Streamlit UI (direct pipeline version)
 │
-├── data/
-│ └── documents/
+├── backend/
+│   ├── rag_service.py      # Core RAG orchestration
+│   ├── state.py            # Global state & embeddings
+│   └── schemas.py          # Request / response schemas
 │
-├── ingestion/
-│ ├── load_documents.py
-│ └── chunking.py
-│
-├── embeddings/
-│ ├── embedding_model.py
-│ └── generate_embeddings.py
+├── rag_core/
+│   └── pipeline.py         # RAG pipeline abstraction
 │
 ├── retrieval/
-│ └── similarity.py
+│   └── similarity.py       # Vector similarity retrieval
 │
 ├── llm/
-│ ├── llm_model.py
-│ ├── prompt.py
-│ └── inference.py
+│   ├── llm_model.py        # LLM wrapper
+│   └── utils.py            # Token estimation
 │
 ├── evaluation/
-│ ├── retrieval_metrics.py
-│ ├── context_coverage.py
-│ └── faithfulness.py
+│   ├── retrieval_metrics.py
+│   ├── context_coverage.py
+│   ├── faithfulness.py
+│   └── hallucination.py
 │
+├── data/                   # Uploaded documents
+├── requirements.txt
+├── Dockerfile              # (Explored for deployment)
 └── README.md
 
----
-
-## ▶️ How to Run
-
-```bash
+🖥️ Running Locally
+1️⃣ Install dependencies
 pip install -r requirements.txt
-python app.py
 
-## Add your documents inside:
+2️⃣ Run the Streamlit app
+streamlit run streamlit_app.py
 
-data/documents/
+3️⃣ Open in browser
+http://localhost:7860
 
-🧠 Key Learnings
+🌍 Public Demo (Optional)
 
-Why retrieval alone is insufficient
+The app was successfully exposed using ngrok for mobile and external access:
 
-How prompt + context work together
+ngrok http 7860
 
-Importance of similarity thresholds
 
-How to detect hallucinations
+This generates a public HTTPS URL usable on any device.
 
-Real-world RAG evaluation strategies
+🐳 Deployment Notes (Important)
 
-🔮 Future Improvements
+Docker-based deployment was explored (Hugging Face Spaces)
 
-PDF ingestion
+Due to:
 
-Streamlit UI
+heavy initialization
 
-Vector database (FAISS)
+embedding state
 
-Hugging Face deployment
+RAG pipeline startup costs
 
-Conversational memory
+Hugging Face Spaces showed intermittent runtime issues
+
+➡️ This is a platform limitation, not an architectural flaw.
+
+In real-world setups, this system is better suited for:
+
+AWS EC2 / ECS
+
+Azure App Service
+
+GCP Cloud Run
+
+🎯 Why This Project Matters
+
+This project goes beyond toy RAG demos by addressing real production concerns:
+
+Explainability (trust)
+
+Failure analysis (debuggability)
+
+Cost awareness (scalability)
+
+Performance monitoring (latency)
+
+These are the exact concerns evaluated in:
+
+ML engineer interviews
+
+Applied AI roles
+
+Startup MVP discussions
+
+🔮 Future Extensions
+
+Multimodal RAG (PDF + images)
+
+Hybrid retrieval (BM25 + vectors)
+
+Query intent classification
+
+RAG evaluation automation
+
+Agent-based document workflows
+
+Cloud-native deployment (AWS/GCP)
 
 👤 Author
 
 Anshu Pandey
-Machine Learning & Deep Learning Practitioner
-Focused on building systems from first principles
-
-## 📄 Sample Documents
-
-This repository includes sample text files in `data/documents/` to demonstrate
-how the RAG pipeline works. Users can replace these with their own documents.
-
+Aspiring Machine Learning & AI Engineer
+Focused on building scalable, explainable ML systems
