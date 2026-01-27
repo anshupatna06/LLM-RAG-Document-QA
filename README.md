@@ -1,10 +1,10 @@
-📚 LLM-Powered RAG Document Question Answering System
+# 📚 LLM-Powered RAG Document Question Answering System
 
 A production-style Retrieval-Augmented Generation (RAG) system that answers questions from user-uploaded documents with explainability, evaluation metrics, failure analysis, latency & cost monitoring.
 
 This project focuses not just on getting answers, but on understanding why an answer was generated or refused — a critical requirement for real-world LLM systems.
 
-🚀 Key Highlights
+# 🚀 Key Highlights
 
 ✅ End-to-end RAG pipeline (Retrieval → Filtering → Generation)
 
@@ -24,7 +24,7 @@ This project focuses not just on getting answers, but on understanding why an an
 
 🐳 Docker-ready (explored for cloud deployment)
 
-🏗️ System Architecture
+# 🏗️ System Architecture:
 User Query
    ↓
 Query Rewriting
@@ -39,14 +39,14 @@ LLM Answer Generation
    ↓
 Evaluation + Explainability + Metrics
 
-🧠 Core Concepts Implemented
-🔹 Retrieval-Augmented Generation (RAG)
+# 🧠 Core Concepts Implemented
+#🔹 Retrieval-Augmented Generation (RAG)
 
 Prevents hallucination by grounding answers in retrieved document chunks
 
 Uses similarity-based filtering to control relevance
 
-🔹 Explainability (Why this answer?)
+#🔹 Explainability (Why this answer?)
 
 Shows:
 
@@ -56,7 +56,7 @@ Which chunks were retrieved but ignored
 
 Why certain context was rejected
 
-🔹 Failure-Case Dashboard
+#🔹 Failure-Case Dashboard
 
 When no answer is generated, the system explains:
 
@@ -66,7 +66,7 @@ Highest retrieved score
 
 Concrete steps to fix the issue (lower threshold, increase Top-K, add documents)
 
-🔹 Evaluation Metrics
+#🔹 Evaluation Metrics
 
 Recall@K – retrieval quality
 
@@ -76,7 +76,7 @@ Faithfulness – consistency with retrieved context
 
 Grounding Score – hallucination risk indicator
 
-🔹 Performance Monitoring
+#🔹 Performance Monitoring
 
 Retrieval latency
 
@@ -86,7 +86,7 @@ Total request latency
 
 Token usage & estimated cost
 
-🗂️ Project Structure
+# 🗂️ Project Structure
 LLM-RAG-Document-QA/
 │
 ├── app.py                  # FastAPI backend (API version)
@@ -118,7 +118,7 @@ LLM-RAG-Document-QA/
 ├── Dockerfile              # (Explored for deployment)
 └── README.md
 
-🖥️ Running Locally
+#🖥️ Running Locally
 1️⃣ Install dependencies
 pip install -r requirements.txt
 
@@ -128,7 +128,7 @@ streamlit run streamlit_app.py
 3️⃣ Open in browser
 http://localhost:7860
 
-🌍 Public Demo (Optional)
+# 🌍 Public Demo (Optional)
 
 The app was successfully exposed using ngrok for mobile and external access:
 
@@ -137,7 +137,7 @@ ngrok http 7860
 
 This generates a public HTTPS URL usable on any device.
 
-🐳 Deployment Notes (Important)
+# 🐳 Deployment Notes 
 
 Docker-based deployment was explored (Hugging Face Spaces)
 
@@ -161,7 +161,7 @@ Azure App Service
 
 GCP Cloud Run
 
-🎯 Why This Project Matters
+# 🎯 Why This Project Matters
 
 This project goes beyond toy RAG demos by addressing real production concerns:
 
@@ -181,7 +181,7 @@ Applied AI roles
 
 Startup MVP discussions
 
-🔮 Future Extensions
+# 🔮 Future Extensions
 
 Multimodal RAG (PDF + images)
 
@@ -195,7 +195,7 @@ Agent-based document workflows
 
 Cloud-native deployment (AWS/GCP)
 
-👤 Author
+#👤 Author
 
 Anshu Pandey
 Aspiring Machine Learning & AI Engineer
