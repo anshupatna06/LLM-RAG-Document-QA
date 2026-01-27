@@ -128,7 +128,7 @@ streamlit run streamlit_app.py
 3️⃣ Open in browser
 http://localhost:7860
 
-# 🌍 Public Demo (Optional)
+🌍 Public Demo 
 
 The app was successfully exposed using ngrok for mobile and external access:
 
@@ -137,7 +137,7 @@ ngrok http 7860
 
 This generates a public HTTPS URL usable on any device.
 
-# 🐳 Deployment Notes 
+ 🐳 Deployment Notes 
 
 Docker-based deployment was explored (Hugging Face Spaces)
 
@@ -161,7 +161,7 @@ Azure App Service
 
 GCP Cloud Run
 
-# 🎯 Why This Project Matters
+ 🎯 Why This Project Matters
 
 This project goes beyond toy RAG demos by addressing real production concerns:
 
@@ -181,7 +181,7 @@ Applied AI roles
 
 Startup MVP discussions
 
-# 🔮 Future Extensions
+ 🔮 Future Extensions
 
 Multimodal RAG (PDF + images)
 
@@ -195,7 +195,7 @@ Agent-based document workflows
 
 Cloud-native deployment (AWS/GCP)
 
-#👤 Author
+👤 Author
 
 Anshu Pandey
 Aspiring Machine Learning & AI Engineer
