@@ -40,13 +40,13 @@ LLM Answer Generation
 Evaluation + Explainability + Metrics
 
 # 🧠 Core Concepts Implemented
-#🔹 Retrieval-Augmented Generation (RAG)
+🔹 Retrieval-Augmented Generation (RAG)
 
 Prevents hallucination by grounding answers in retrieved document chunks
 
 Uses similarity-based filtering to control relevance
 
-#🔹 Explainability (Why this answer?)
+🔹 Explainability (Why this answer?)
 
 Shows:
 
@@ -56,7 +56,7 @@ Which chunks were retrieved but ignored
 
 Why certain context was rejected
 
-#🔹 Failure-Case Dashboard
+🔹 Failure-Case Dashboard
 
 When no answer is generated, the system explains:
 
@@ -66,7 +66,7 @@ Highest retrieved score
 
 Concrete steps to fix the issue (lower threshold, increase Top-K, add documents)
 
-#🔹 Evaluation Metrics
+🔹 Evaluation Metrics
 
 Recall@K – retrieval quality
 
@@ -76,7 +76,7 @@ Faithfulness – consistency with retrieved context
 
 Grounding Score – hallucination risk indicator
 
-#🔹 Performance Monitoring
+🔹 Performance Monitoring
 
 Retrieval latency
 
