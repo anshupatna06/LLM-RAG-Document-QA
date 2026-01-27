@@ -181,7 +181,7 @@ Applied AI roles
 
 Startup MVP discussions
 
- #🔮 Future Extensions
+# 🔮 Future Extensions
 
 Multimodal RAG (PDF + images)
 
@@ -195,7 +195,7 @@ Agent-based document workflows
 
 Cloud-native deployment (AWS/GCP)
 
-#👤 Author
+# 👤 Author
 
 Anshu Pandey
 Aspiring Machine Learning & AI Engineer
