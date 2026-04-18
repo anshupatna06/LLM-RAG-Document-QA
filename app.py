@@ -40,13 +40,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-llm = LLM()
-pipeline = RAGPipeline(
-    embedding_model=state.embedding_model,
-    llm=llm,
-    retriever=retrieve_top_k
-)
+# llm = LLM()
+# pipeline = RAGPipeline(
+#     embedding_model=state.embedding_model,
+#     llm=llm,
+#     retriever=retrieve_top_k
+# )
 
+pipeline_instance = None
+
+def get_pipeline():
+    global pipeline_instance
+
+    if pipeline_instance is None:
+        print("⚡ Initializing pipeline...")
+        llm = LLM()
+        pipeline_instance = RAGPipeline(
+            embedding_model=state.embedding_model,
+            llm=llm,
+            retriever=retrieve_top_k
+        )
+
+    return pipeline_instance
 
 # ------------------------------
 # Root
@@ -54,6 +69,11 @@ pipeline = RAGPipeline(
 @app.get("/")
 def root():
     return {"message": "RAG API is running", "docs": "/docs"}
+
+
+@app.on_event("startup")
+def startup_event():
+    print("🚀 App started successfully")
 
 
 @app.get("/{business_id}/welcome")
@@ -182,6 +202,8 @@ def query_with_agent(
     # if detected in state.indices:
     #     business_id = detected
 
+    # agent = RAGAgent(pipeline)
+    pipeline = get_pipeline()
     agent = RAGAgent(pipeline)
 
     # if business_id not in state.indices:
@@ -193,7 +215,12 @@ def query_with_agent(
     # if client_id not in state.indices.get(business_id, {}):
     #         return {"answer": "No documents found for this client."}
 
-    index = state.get_index(business_id, client_id)
+    # index = state.get_index(business_id, client_id) # WRAP IT TO PREVENT FROM CRASHING
+    try:
+        index = state.get_index(business_id, client_id)
+    except Exception as e:
+        print("❌ INDEX ERROR:", e)
+        return {"answer": "Error loading documents."}
 
     if not index:
         return {"answer": "No documents found for this client."}
@@ -230,6 +257,8 @@ def query_with_agent(
     safe_result = sanitize_for_json(result)
 
     return safe_result
+
+
 
 import uvicorn
 
