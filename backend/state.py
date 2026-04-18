@@ -1,7 +1,7 @@
 from ingestion.load_documents import load_documents
 from ingestion.chunking import process_documents
 from embeddings.generate_embeddings import embed_texts
-from embeddings.embedding_model import EmbeddingModel
+#from embeddings.embedding_model import EmbeddingModel
 from retrieval.bm25_retriever import BM25Retriever
 import os
 
@@ -82,7 +82,7 @@ DATA_DIR = "data/documents"
 class DocumentState:
 
     def __init__(self):
-        self.embedding_model = EmbeddingModel()
+        self.embedding_model = None
         
 
     def get_index(self, business_id, client_id):

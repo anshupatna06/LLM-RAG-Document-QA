@@ -7,7 +7,7 @@ import re
 
 class RAGPipeline:
     def __init__(self, embedding_model, llm, retriever, bm25=None):
-        self.embedding_model = embedding_model
+        self.embedding_model = None
         self.llm = llm
         self.retriever = retriever
         self.bm25 = bm25
