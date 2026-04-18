@@ -7,7 +7,7 @@ from backend.state import state, DATA_DIR
 from backend.schemas import QueryRequest
 from rag_core.pipeline import RAGPipeline
 from retrieval.similarity import retrieve_top_k
-from llm.llm_model import LLM
+#from llm.llm_model import LLM
 from agent.agent_controller import RAGAgent
 from agent.executor import AgentExecutor
 from business.welcome_message import generate_welcome_message
@@ -49,19 +49,25 @@ app.add_middleware(
 
 pipeline_instance = None
 
-def get_pipeline():
-    global pipeline_instance
+# def get_pipeline():
+#     global pipeline_instance
 
-    if pipeline_instance is None:
-        print("⚡ Initializing pipeline...")
-        llm = LLM()
-        pipeline_instance = RAGPipeline(
-            embedding_model=state.embedding_model,
-            llm=llm,
-            retriever=retrieve_top_k
-        )
+#     if pipeline_instance is None:
+#         print("⚡ Initializing pipeline...")
+#         llm = LLM()
+#         pipeline_instance = RAGPipeline(
+#             embedding_model=state.embedding_model,
+#             llm=llm,
+#             retriever=retrieve_top_k
+#         )
 
-    return pipeline_instance
+#     return pipeline_instance
+
+pipeline_instance = RAGPipeline(
+    embedding_model=None,
+    llm=None,
+    retriever=retrieve_top_k
+)
 
 # ------------------------------
 # Root
@@ -203,8 +209,8 @@ def query_with_agent(
     #     business_id = detected
 
     # agent = RAGAgent(pipeline)
-    pipeline = get_pipeline()
-    agent = RAGAgent(pipeline)
+    #pipeline = get_pipeline()
+    agent = RAGAgent(pipeline_instance)
 
     # if business_id not in state.indices:
     #     return {

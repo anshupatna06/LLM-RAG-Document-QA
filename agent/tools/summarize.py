@@ -28,7 +28,7 @@ def summarize_chunks(memory, retrieval, pipeline):
         + "\n\n".join(used_chunks)
     )
 
-    summary = pipeline.llm.generate(summary_prompt)
+    summary = used_chunks[0] if used_chunks else ""
 
     memory.log("summarize", "Context summarized")
 

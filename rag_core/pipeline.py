@@ -151,4 +151,4 @@ class RAGPipeline:
         )
         print("Prompt length:", len(prompt)) # DEBUG TOOL
 
-        return generate_answer(prompt, self.llm)
+        return generate_answer(context, question)
