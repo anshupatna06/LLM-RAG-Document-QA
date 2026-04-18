@@ -1,10 +1,19 @@
-def build_prompt(context_chunks, question):
-    context = "\n\n".join(context_chunks)
+def build_prompt(context_chunks, question, system_prompt):
+
+    context = "\n\n".join(context_chunks[:3])
 
     prompt = f"""
-You are an assistant that answers questions strictly using the provided context.
-If the answer is not present in the context, say:
-"I cannot find the answer in the provided documents."
+{system_prompt}
+
+Answer the user's question using the provided context.
+
+Rules:
+1. Use ONLY the provided context.
+2. If the answer is not present, say:
+   "I cannot find this information in the provided documents."
+3. Be concise and natural.
+4. Avoid repeating information.
+5. Do not copy raw document formatting.
 
 Context:
 {context}
@@ -14,4 +23,5 @@ Question:
 
 Answer:
 """
+
     return prompt

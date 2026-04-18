@@ -1,0 +1,203 @@
+/* body{
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
+
+
+.user{
+  background:#2563eb;
+  padding:10px;
+  margin:10px;
+  border-radius:10px;
+}
+
+.assistant{
+  background:#1e293b;
+  padding:10px;
+  margin:10px;
+  border-radius:10px;
+}
+
+.suggestions button{
+  margin:5px;
+  padding:8px;
+}
+
+.app-layout{
+  display:flex;
+  height:100vh;
+}
+
+.sidebar{
+  width:300px;
+  background:#0f172a;
+  padding:20px;
+}
+
+.chat-container{
+  flex:1;
+  padding:20px;
+} */
+
+body{
+  margin:0;
+  font-family: Arial;
+  background:#0f172a;
+  color:white;
+}
+
+.app-layout{
+  display:flex;
+  height:100vh;
+  width:100%;
+}
+
+
+
+.section{
+  margin-bottom:20px;
+}
+
+.sidebar select,
+.sidebar input{
+  width:100%;
+  padding:8px;
+  margin-top:5px;
+  background:#1e293b;
+  color:white;
+  border:none;
+  border-radius:6px;
+}
+
+/* CHAT */
+.chat-container{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  padding:20px;
+  width:100%;
+}
+
+.chat-window{
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+}
+
+/* MESSAGES */
+.user{
+  background:#2563eb;
+  padding:12px;
+  margin:10px;
+  border-radius:12px;
+  align-self:flex-end;
+  max-width:60%;
+}
+
+.assistant{
+  background:#1e293b;
+  padding:12px;
+  margin:10px;
+  border-radius:12px;
+  align-self:flex-start;
+  max-width:60%;
+}
+
+/* INPUT */
+input{
+  padding:12px;
+  border-radius:8px;
+  border:none;
+  margin-top:10px;
+}
+
+/* SUGGESTIONS */
+.suggestions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:10px 0;
+}
+
+.suggestions button{
+  background:#1e293b;
+  color:white;
+  border:none;
+  padding:8px 12px;
+  border-radius:20px;
+  cursor:pointer;
+}
+
+.suggestions button:hover{
+  background:#2563eb;
+}
+
+.top-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.top-bar button{
+  background:#1e293b;
+  color:white;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+/* SIDEBAR BASE */
+.sidebar{
+  width:280px;
+  background:#020617;
+  padding:20px;
+  border-right:1px solid #1e293b;
+  transition: all 0.3s ease;
+  overflow:hidden;
+}
+
+/* WHEN CLOSED */
+.sidebar.closed{
+  width:0;
+  padding:0;
+  border:none;
+}
+
+.welcome-box{
+  text-align:center;
+  margin-top:60px;
+}
+
+.welcome-box h2{
+  font-size:24px;
+  margin-bottom:10px;
+}
+
+.welcome-box p{
+  color:#94a3b8;
+  margin:5px 0;
+}
+
+.welcome-suggestions{
+  margin-top:20px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+}
+
+.welcome-suggestions button{
+  background:#1e293b;
+  color:white;
+  border:none;
+  padding:10px 14px;
+  border-radius:20px;
+  cursor:pointer;
+}
+
+.welcome-suggestions button:hover{
+  background:#2563eb;
+}
