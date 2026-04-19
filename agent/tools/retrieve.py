@@ -183,32 +183,51 @@ def map_query_to_section(query):
 # BUSINESS + ROUTE FILTERING
 # ----------------------------------------
 
-def filter_chunks(chunks, embeddings, business_id, query):
+# def filter_chunks(chunks, embeddings, business_id, query):
 
-    #target_section = map_query_to_section(query)
+#     #target_section = map_query_to_section(query)
+
+#     filtered_chunks = []
+#     filtered_embeddings = []
+
+#     for emb, chunk in zip(embeddings, chunks):
+
+#         # business filter
+#         if chunk["business_id"] != business_id:      # ✅ ONLY strict filter = business
+#             continue
+
+#         # section filter (soft)
+#         # if target_section and target_section not in chunk.get("section", ""):
+#         #     continue
+
+#         filtered_chunks.append(chunk)
+#         filtered_embeddings.append(emb)
+
+    
+
+#     return filtered_chunks, filtered_embeddings
+
+def filter_chunks(chunks, embeddings, business_id, query):
 
     filtered_chunks = []
     filtered_embeddings = []
 
+    # 🔥 CASE 1: embeddings NOT available
+    if embeddings is None:
+        for chunk in chunks:
+            if chunk["business_id"] != business_id:
+                continue
+            filtered_chunks.append(chunk)
+
+        return filtered_chunks, None
+
+    # 🔥 CASE 2: embeddings available
     for emb, chunk in zip(embeddings, chunks):
-
-        # business filter
-        if chunk["business_id"] != business_id:      # ✅ ONLY strict filter = business
+        if chunk["business_id"] != business_id:
             continue
-
-        # section filter (soft)
-        # if target_section and target_section not in chunk.get("section", ""):
-        #     continue
 
         filtered_chunks.append(chunk)
         filtered_embeddings.append(emb)
-
-    # fallback if nothing found (VERY IMPORTANT)
-    # if not filtered_chunks:
-    #     for emb, chunk in zip(embeddings, chunks):
-    #         if chunk["business_id"] == business_id:
-    #             filtered_chunks.append(chunk)
-    #             filtered_embeddings.append(emb)
 
     return filtered_chunks, filtered_embeddings
 
@@ -556,12 +575,25 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     # -----------------------------
     # VECTOR RETRIEVAL
     # -----------------------------
-    vector_results = pipeline.retrieve(
-        query,
-        filtered_embeddings,
-        filtered_chunks,
-        adaptive_k
-    )
+    # vector_results = pipeline.retrieve(
+    #     query,
+    #     filtered_embeddings,
+    #     filtered_chunks,
+    #     adaptive_k
+    # )
+
+    # -----------------------------
+    # VECTOR RETRIEVAL (ONLY IF AVAILABLE)
+    # -----------------------------
+    if filtered_embeddings is not None:
+        vector_results = pipeline.retrieve(
+            query,
+            filtered_embeddings,
+            filtered_chunks,
+            adaptive_k
+        )
+    else:
+        vector_results = []
 
     # -----------------------------
     # BM25 RETRIEVAL
