@@ -23,24 +23,37 @@
 import ChatWindow from "./components/chat/ChatWindow"
 import Sidebar from "./components/Sidebars/Sidebar"
 import { useState } from "react"
+import { useParams } from "react-router-dom"
+import { useEffect } from "react"
 
 function App() {
+
+  const params = useParams()
 
   const [business, setBusiness] = useState("hotel")
   const [client, setClient] = useState("taj")
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
+  useEffect(() => {
+    if (params.business && params.client) {
+      setBusiness(params.business)
+      setClient(params.client)
+    }
+  },  [params.business, params.client])
+
   return (
     <div className="app-layout">
 
       {/* SIDEBAR */}
-      <Sidebar
-        business={business}
-        setBusiness={setBusiness}
-        client={client}
-        setClient={setClient}
-        sidebarOpen={sidebarOpen}
-      />
+      {!(params.business && params.client) && (
+        <Sidebar
+          business={business}
+          setBusiness={setBusiness}
+          client={client}
+          setClient={setClient}
+          sidebarOpen={sidebarOpen}
+        />
+      )}
 
       {/* CHAT */}
       <ChatWindow

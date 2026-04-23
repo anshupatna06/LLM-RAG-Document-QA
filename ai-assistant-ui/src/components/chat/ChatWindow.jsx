@@ -69,9 +69,33 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
      LOAD CLIENTS AUTOMATICALLY
   ------------------------------ */
 
-  useEffect(()=>{
+  // useEffect(()=>{
 
-    fetch("http://localhost:8000/documents")
+  //   fetch("http://localhost:8000")
+  //     .then(res=>res.json())
+  //     .then(data=>{
+
+  //       const businessClients = data[business] || []
+
+  //       setClients(businessClients)
+  //       setMessages([])
+  //       setSuggestions([])
+  //       setLoading(false)
+
+  //       if(businessClients.length > 0){
+  //         setClient(businessClients[0]) // auto select first
+  //       } else {
+  //         setClient("")
+  //       }
+
+  //     })
+  //     .catch(()=>setClients([]))
+
+  // },[business, client])
+
+  useEffect(() => {
+
+    fetch("https://llm-rag-document-qa-3.onrender.com")
       .then(res=>res.json())
       .then(data=>{
 
@@ -82,16 +106,15 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
         setSuggestions([])
         setLoading(false)
 
-        if(businessClients.length > 0){
-          setClient(businessClients[0]) // auto select first
-        } else {
-          setClient("")
+        // 🔥 ONLY auto-select if client NOT already set
+        if(!client && businessClients.length > 0){
+          setClient(businessClients[0])
         }
 
       })
       .catch(()=>setClients([]))
 
-  },[business, client])
+  }, [business])   // 🔥 REMOVE client from dependency
 
   /* ------------------------------
      SEND MESSAGE
@@ -166,7 +189,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
     try {
 
-      await fetch(`http://localhost:8000/${business}/${client}/upload`, {
+      await fetch(`https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`, {
         method: "POST",
         body: formData
       })
@@ -201,7 +224,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
       {isEmpty && (
   <div className="welcome-box">
 
-    <h2>{getWelcomeContent(business, client).title}</h2>
+    <h2>🏥{getWelcomeContent(business, client).title}</h2>
 
     {getWelcomeContent(business, client).description.map((d,i)=>(
       <p key={i}>{d}</p>

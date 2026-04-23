@@ -8,7 +8,8 @@ from agent.utils.query_classifier import (
     is_list_query,
     is_binary_question,
     is_feature_query,
-    route_query
+    route_query,
+    detect_query_type
 )
 
 def safe_score(x):
@@ -69,7 +70,7 @@ def rerank(query, results):
 
         scored.append((final_score, text, source))
 
-    scored.sort(reverse=True)
+    scored.sort(key = lambda x : x[0], reverse=True)
 
     return scored
 
@@ -385,54 +386,51 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
         "default": 3
     }
 
+    original_user_query = query
+
     # -----------------------------
     # NORMALIZE QUERY
     # -----------------------------
     query = normalize_query(query)
 
-    # -----------------------------
-    # ROUTING
-    # # -----------------------------
-    # route = route_query(query)
+    
 
-    # # -----------------------------
-    # # QUERY TYPE ROUTING
-    # # -----------------------------
-    # if is_time_query(query):
-    #     active_chunks = fine_chunks
-    #     active_embeddings = fine_embeddings
-    #     active_bm25 = fine_bm25
+    query_type = detect_query_type(
+        query,
+        original_query=original_user_query,
+        list_chunks=index.get("list_chunks", [])
+    )
+    print("RETRIEVAL QUERY TYPE:", query_type)
 
-    # elif is_list_query(query) or is_binary_question(query):
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
-    # else:
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
 
     # -----------------------------
-    # 🔥 UNIFIED INTENT ROUTING(DTECT QUERY-TYPE)
-    # -----------------------------
-    if is_binary_question(query):
-        query_type = "binary"
+    # # 🔥 CONTACT EARLY RETURN
+    # # -----------------------------
+    # if query_type == "contact":
 
-    elif is_time_query(query):
-        query_type = "time"
+    #     print("🚀 CONTACT EARLY RETURN TRIGGERED")
 
+    #     contact_blocks = [
+    #         c for c in list_chunks
+    #         if c.get("type") == "contact"
+    #     ]
 
-    elif is_list_query(query):
-        query_type = "list"
+    #     if contact_blocks:
+    #         block = contact_blocks[0]
 
-    elif is_feature_query(query):
-        query_type = "feature"   # 🔥 NEW
-
-
-    else:
-        query_type = "general"
-
+    #         return {
+    #             "chunks": [
+    #                 {
+    #                     "text": block["text"],
+    #                     "source": block,
+    #                     "type": "contact",
+    #                     "score": 1.0
+    #                 }
+    #             ],
+    #             "used_chunks": 1,
+    #             "retrieved_chunks": 1,
+    #             "sources": [block["source"]]
+    #         }
     
     # -----------------------------
     # 🔥 HADLE LIST EARLY
@@ -444,7 +442,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
         if list_chunks:
             ranked = sorted(
                 list_chunks,
-                key=lambda c: score_list_block(query, c),
+                key=lambda c: score_list_block(original_user_query, c),
                 reverse=True
             )
 
@@ -472,33 +470,37 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
 
     # -----------------------------
     # 🔥 STEP 3: NORMAL RETRIEVAL SETUP
-    # -----------------------------
-    if query_type == "time":
-        # 🔥 time lives in structured / coarse chunks
-        active_chunks = coarse_chunks
-        active_embeddings = coarse_embeddings
-        active_bm25 = coarse_bm25
+    # # -----------------------------
+    # if query_type == "time":
+    #     # 🔥 time lives in structured / coarse chunks
+    #     active_chunks = coarse_chunks
+    #     active_embeddings = coarse_embeddings
+    #     active_bm25 = coarse_bm25
 
-    elif query_type == "list":
-        # 🔥 list handled separately (early return below)
-        active_chunks = coarse_chunks
-        active_embeddings = coarse_embeddings
-        active_bm25 = coarse_bm25
+    # elif query_type == "list":
+    #     # 🔥 list handled separately (early return below)
+    #     active_chunks = coarse_chunks
+    #     active_embeddings = coarse_embeddings
+    #     active_bm25 = coarse_bm25
 
-    elif query_type == "binary":
-        active_chunks = coarse_chunks
-        active_embeddings = coarse_embeddings
-        active_bm25 = coarse_bm25
+    # elif query_type == "binary":
+    #     active_chunks = coarse_chunks
+    #     active_embeddings = coarse_embeddings
+    #     active_bm25 = coarse_bm25
 
-    elif query_type == "feature":
-        active_chunks = coarse_chunks
-        active_embeddings = coarse_embeddings
-        active_bm25 = coarse_bm25
+    # elif query_type == "feature":
+    #     active_chunks = coarse_chunks
+    #     active_embeddings = coarse_embeddings
+    #     active_bm25 = coarse_bm25
 
-    else:  # general
-        active_chunks = coarse_chunks
-        active_embeddings = coarse_embeddings
-        active_bm25 = coarse_bm25
+    # else:  # general
+    #     active_chunks = coarse_chunks
+    #     active_embeddings = coarse_embeddings
+    #     active_bm25 = coarse_bm25
+
+    active_chunks = coarse_chunks
+    active_embeddings = coarse_embeddings
+    active_bm25 = coarse_bm25
 
 
 
@@ -833,6 +835,8 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     print("BM25 results:", len(keyword_results))
     print("Hybrid results:", len(retrieved))
 
+    
+
     for c in retrieved:
 
         if isinstance(c, tuple):
@@ -873,7 +877,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
 
     print("\n🧠 FINAL SCORING:")
     for c in list_chunks:
-        print(c["list_title"], "→", score_list_block(query, c))
+        print(c["list_title"], "→", score_list_block(original_user_query, c))
 
 
 

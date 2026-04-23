@@ -12,7 +12,7 @@ from agent.tools.suggest import generate_suggestions
 
 from business.business_config import get_business_config
 from agent.utils.intent import detect_intent
-from agent.utils.query_classifier import is_time_query, is_list_query, is_binary_question, is_feature_query
+from agent.utils.query_classifier import is_time_query, is_list_query, is_binary_question, is_feature_query, detect_query_type, is_contact_query
 # from rag_core import normalize_sub_query
 
 DEFAULT_TOP_K = 3
@@ -129,6 +129,55 @@ def normalize_sub_query(p):
         return p
 
 
+def check_binary_from_list(query, list_chunks):
+    q = query.lower()
+
+    best_score = 0
+    best_block = None
+
+    for block in list_chunks:
+        title = block.get("list_title", "").lower()
+        items = " ".join(block.get("items", [])).lower()
+
+        score = 0
+
+        # 🔥 STRONG: full phrase match
+        if title in q:
+            score += 5
+
+        # 🔥 word overlap with title
+        overlap = sum(1 for w in q.split() if w in title)
+        score += overlap * 2
+
+        # 🔥 weaker: item match
+        if any(w in items for w in q.split()):
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best_block = block
+
+    # 🔥 threshold (VERY IMPORTANT)
+    if best_score >= 3:
+        return True, best_block
+
+    return False, None
+
+def binary_from_chunks(query, chunks):
+    q = query.lower()
+
+    for c in chunks:
+        text = c.get("text", "").lower()
+
+        if any(word in text for word in q.split()):
+            return True, text
+
+    return False, None
+
+
+
+
+
 class AgentExecutor:
 
     # def __init__(self, agent, chunk_embeddings, chunks, threshold=DEFAULT_THRESHOLD, top_k=DEFAULT_TOP_K):
@@ -181,14 +230,21 @@ class AgentExecutor:
     def run(self, query: str, business_id: str, memory=None):
 
         print("🚨 EXECUTOR START")
+
+        metrics = {}
+        performance = {}
+        answer = ""
+        answer_part = ""
         force_binary = False
+        original_user_query = query
 
         # -----------------------------
         # 🔥 CACHE CHECK (TOP)
         # -----------------------------
         cache_key = normalize_query(query)
 
-        cached = get_cached_response(cache_key, business_id)
+        # cached = get_cached_response(cache_key, business_id)
+        cached = None
 
         if cached:
             print("⚡ CACHE HIT")
@@ -233,13 +289,16 @@ class AgentExecutor:
 
         # sub_queries = self.pipeline.split_multi_query(rewritten)
 
-        normalized = normalize_query(query)
-        sub_queries = self.pipeline.split_multi_query(normalized)
+        # normalized = normalize_query(query)
+        # sub_queries = self.pipeline.split_multi_query(normalized)
 
-        sub_queries = [normalize_sub_query(p) for p in sub_queries]
+        # sub_queries = [normalize_sub_query(p) for p in sub_queries]
 
-        # optional (after split)
-        sub_queries = [self.pipeline.rewrite_query(p, memory) for p in sub_queries]
+        # # optional (after split)
+        # sub_queries = [self.pipeline.rewrite_query(p, memory) for p in sub_queries]
+
+        # 🔥 CRITICAL FIX
+        sub_queries = [original_user_query]
 
         # 🔥 multi-query override
         if len(sub_queries) > 1:
@@ -254,33 +313,42 @@ class AgentExecutor:
         memory.log("intent", intent)
 
         # -----------------------------
-        # 🔥 QUERY TYPE DETECTION (MOVE HERE)
-        # -----------------------------
-        if force_binary:
-            query_type = "binary"
+        # # 🔥 QUERY TYPE DETECTION (MOVE HERE)
+        # # -----------------------------
+        # if force_binary:
+        #     query_type = "binary"
 
-        if is_binary_question(query):
-            query_type = "binary"
+        # if is_binary_question(query):
+        #     query_type = "binary"
 
-        elif is_time_query(query):
-            query_type = "time"
+        # elif is_time_query(query):
+        #     query_type = "time"
 
-        elif is_list_query(query):
-            query_type = "list"
-
-        elif is_feature_query(query):
-            query_type = "feature"   # 🔥 NEW
-
-
-        else:
-            query_type = "general"
-
-
-        # if query_type == "general" and max_score > 10:
-        #     print("🔥 INTENT OVERRIDE → LIST")
+        # elif is_list_query(query):
         #     query_type = "list"
 
+        # elif is_feature_query(query):
+        #     query_type = "feature"   # 🔥 NEW
+
+
+        # else:
+        #     query_type = "general"
+
+
+        query_type = detect_query_type(
+            query,
+            original_query=original_user_query,  # ⚠️ IMPORTANT
+            force_binary=force_binary,
+            list_chunks=self.index.get("list_chunks", [])
+        )
+
+        # if is_contact_query(original_user_query):
+        #     print("🔥 CONTACT OVERRIDE FROM ORIGINAL QUERY")
+        #     query_type = "contact"
+
         print("🧠 EXECUTOR QUERY TYPE:", query_type)
+
+        #print("🧠 EXECUTOR QUERY TYPE:", query_type)
 
 
         # -----------------------------
@@ -334,7 +402,8 @@ class AgentExecutor:
 
             sub_cache_key = normalize_query(q)
 
-            cached = get_cached_response(sub_cache_key, business_id)
+            #cached = get_cached_response(sub_cache_key, business_id)
+            cached = None
 
             if cached:
                 print("⚡ SUBQUERY CACHE HIT:", q)
@@ -349,6 +418,47 @@ class AgentExecutor:
                 memory,
                 query_type    # 🔥 ADD THIS
             )
+
+            # if query_type == "binary":
+
+            #     # 🔥 FIRST: LIST BLOCK (STRUCTURED)
+            #     exists, block = check_binary_from_list(
+            #         query,
+            #         self.index.get("list_chunks", [])
+            #     )
+
+            #     if exists:
+            #         print("🔥 BINARY OVERRIDE FROM LIST")
+
+            #         return {
+            #             "answer": f"Yes, {block['list_title']} is available.",
+            #             "sources": [],
+            #             "retrieval": {}
+            #         }
+
+            #     # 🔥 SECOND: CHUNK LEVEL (VERY IMPORTANT)
+            #     all_chunks = retrieval.get("chunks", [])
+
+            #     exists_text, matched_text = binary_from_chunks(query, all_chunks)
+
+            #     if exists_text:
+            #         print("🔥 BINARY YES FROM CHUNKS")
+
+            #         return {
+            #             "answer": "Yes, it is available.",
+            #             "sources": [],
+            #             "retrieval": {}
+            #         }
+
+            #     # 🔥 FINAL: NO
+            #     print("❌ BINARY FINAL → NO")
+
+            #     return {
+            #         "answer": "No, this is not available.",
+            #         "sources": [],
+            #         "retrieval": {}
+            #     }                    
+
 
             all_retrieved_chunks.extend(retrieval["chunks"])
             all_sources.extend(retrieval["sources"])
@@ -370,6 +480,10 @@ class AgentExecutor:
                     answers.append(str(answer_part))  #Add a label automatically
 
             if not answer_part:
+
+                if query_type == "contact":
+                    return "Contact information is not available.", {}, {}
+
                 print("⚠️ EMPTY ANSWER FROM VALIDATE")
                 answer_part = "I found some related information, but not enough to answer confidently."
 
@@ -409,6 +523,11 @@ class AgentExecutor:
         print("❌ FALLBACK: price_check")
         print("❌ FALLBACK: grounding")
         print("❌ FALLBACK: validate_context")
+
+        print("🧠 ORIGINAL QUERY:", original_user_query)
+        print("🧠 FINAL QUERY:", query)
+        print("🧠 SUB QUERIES:", sub_queries)
+        print("🧠 FINAL QUERY TYPE:", query_type)
         # --------------------------------------------------
         # STEP 3 — PLANNER DECISION
         # --------------------------------------------------
@@ -506,7 +625,7 @@ class AgentExecutor:
 
         #     return result
 
-        
+        print("📥 CONTACT CHUNKS:", retrieval.get("chunks"))
 
         # -----------------------------
         # 🔥 STORE SUB-QUERY CACHE

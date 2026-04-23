@@ -506,37 +506,59 @@ def remove_repetition(text):
 
 #     return None
 
+# def semantic_match(entity, context):
+
+#     entity_words = entity.split()
+
+#     # direct match
+#     if entity in context:
+#         return True
+
+#     # partial match
+#     if any(w in context for w in entity_words):
+#         return True
+    
+#     # 🔥 ANY important word match
+#     for w in entity_words:
+#         if len(w) > 3 and w in context:
+#             return True
+    
+#     SYNONYMS = {
+#         "diagnostic": ["diagnostic", "lab", "test", "testing", "diagnosis"],
+#         "health checkups": ["preventive", "checkup", "checkups", "health", "Preventive health checkups"],
+#         "consultation": ["consult", "doctor", "appointment"],
+#         "pharmacy": ["medicine", "drug", "medication"],
+#         "wifi": ["wifi", "internet"],
+#         "parking": ["parking", "vehicle", "car"],
+#     }
+
+#     # synonym match
+#     if entity in SYNONYMS:
+#         for syn in SYNONYMS[entity]:
+#             if syn in context:
+#                 return True
+
+#     return False
+
 def semantic_match(entity, context):
 
-    entity_words = entity.split()
+    context = context.lower()
+    entity = entity.lower()
 
-    # direct match
+    # 🔥 STRICT match only
     if entity in context:
         return True
 
-    # partial match
-    if any(w in context for w in entity_words):
-        return True
-    
-    # 🔥 ANY important word match
-    for w in entity_words:
-        if len(w) > 3 and w in context:
-            return True
-    
+    # 🔥 synonym match
     SYNONYMS = {
-        "diagnostic": ["diagnostic", "lab", "test", "testing", "diagnosis"],
-        "health checkups": ["preventive", "checkup", "checkups", "health", "Preventive health checkups"],
-        "consultation": ["consult", "doctor", "appointment"],
-        "pharmacy": ["medicine", "drug", "medication"],
         "wifi": ["wifi", "internet"],
         "parking": ["parking", "vehicle", "car"],
+        "taxi": ["taxi", "cab"],
     }
 
-    # synonym match
     if entity in SYNONYMS:
-        for syn in SYNONYMS[entity]:
-            if syn in context:
-                return True
+        if any(s in context for s in SYNONYMS[entity]):
+            return True
 
     return False
 
@@ -569,95 +591,119 @@ def clean_entity(entity):
 
     return " ".join(words)
 
+def extract_core_entity(entity):
+
+    STOP_WORDS = {
+        "service", "services", "facility", "facilities",
+        "available", "provide", "offer", "have"
+    }
+
+    words = [
+        w for w in entity.lower().split()
+        if w not in STOP_WORDS and len(w) > 2
+    ]
+
+    # 🔥 return MOST important word (last noun bias)
+    return words[-1] if words else entity
+
+
+
+# def detect_yes_no(question, chunks):
+
+#     q = question.lower()
+
+#     context_text = " ".join([
+#         c.get("text", "").lower()
+#         for c in chunks
+#     ])
+
+#     # ----------------------------
+#     # EXTRACT ENTITY
+#     # ----------------------------
+#     entity = detect_entity(question) or extract_main_entity(question) or "it"
+#     entity = clean_entity(entity)
+
+#     if not entity:
+#         entity = question.split()[-1]
+
+#     entity_words = entity.lower().split()
+
+#     # ----------------------------
+#     # 🔥 FLEXIBLE MATCHING
+#     # ----------------------------
+
+#     # 1. direct match
+#     # if entity in context_text:
+#     #     return "Yes"
+
+#     if semantic_match(entity, context_text):
+#         if has_negation(entity, context_text):
+#             return "No"
+#         return "Yes"
+    
+#     # 🔥 if multi-word entity fails → try core noun
+#     if not semantic_match(entity, context_text):
+
+#         core = entity.split()[0]  # e.g., "pharmacy"
+
+#         if core in context_text:
+#             return "Yes"
+
+#     # 2. partial word overlap
+#     overlap = sum(1 for w in entity_words if w in context_text)
+
+#     if overlap >= max(1, len(entity_words) // 2):
+#         return "Yes"
+
+#     # 3. semantic synonyms (VERY IMPORTANT)
+#     SYNONYMS = {
+#         "diagnostic": ["diagnostic", "lab", "test", "testing", "diagnosis"],
+#         "health checkups": ["preventive", "checkup", "checkups", "health", "Preventive health checkups"],
+#         "consultation": ["consult", "doctor", "appointment"],
+#         "pharmacy": ["medicine", "drug", "medication"],
+#         "wifi": ["wifi", "internet"],
+#         "parking": ["parking", "vehicle", "car"],
+#     }
+
+#     for word in entity_words:
+#         if word in SYNONYMS:
+#             if any(s in context_text for s in SYNONYMS[word]):
+#                 return "Yes"
+
+#     # ----------------------------
+#     # NO MATCH
+#     # ----------------------------
+#     return "No"
 
 
 def detect_yes_no(question, chunks):
-
-    q = question.lower()
 
     context_text = " ".join([
         c.get("text", "").lower()
         for c in chunks
     ])
 
-    # ----------------------------
-    # EXTRACT ENTITY
-    # ----------------------------
-    entity = detect_entity(question) or extract_main_entity(question) or "it"
+    entity = detect_entity(question) or extract_main_entity(question)
     entity = clean_entity(entity)
 
     if not entity:
-        entity = question.split()[-1]
+        return "No"
 
-    entity_words = entity.lower().split()
+    # 🔥 extract core entity
+    core = extract_core_entity(entity)
 
-    # ----------------------------
-    # 🔥 FLEXIBLE MATCHING
-    # ----------------------------
+    # 🔥 strict matching
+    if semantic_match(core, context_text):
 
-    # 1. direct match
-    # if entity in context_text:
-    #     return "Yes"
-
-    if semantic_match(entity, context_text):
-        if has_negation(entity, context_text):
+        if has_negation(core, context_text):
             return "No"
-        return "Yes"
-    
-    # 🔥 if multi-word entity fails → try core noun
-    if not semantic_match(entity, context_text):
 
-        core = entity.split()[0]  # e.g., "pharmacy"
-
-        if core in context_text:
-            return "Yes"
-
-    # 2. partial word overlap
-    overlap = sum(1 for w in entity_words if w in context_text)
-
-    if overlap >= max(1, len(entity_words) // 2):
         return "Yes"
 
-    # 3. semantic synonyms (VERY IMPORTANT)
-    SYNONYMS = {
-        "diagnostic": ["diagnostic", "lab", "test", "testing", "diagnosis"],
-        "health checkups": ["preventive", "checkup", "checkups", "health", "Preventive health checkups"],
-        "consultation": ["consult", "doctor", "appointment"],
-        "pharmacy": ["medicine", "drug", "medication"],
-        "wifi": ["wifi", "internet"],
-        "parking": ["parking", "vehicle", "car"],
-    }
-
-    for word in entity_words:
-        if word in SYNONYMS:
-            if any(s in context_text for s in SYNONYMS[word]):
-                return "Yes"
-
-    # ----------------------------
-    # NO MATCH
-    # ----------------------------
     return "No"
 
 
 
-
-# def extract_main_entity(question):
-
-#     q = question.lower()
-
-#     # remove prefixes
-#     q = re.sub(r'^(is|are|do|does|can|will)\s+', '', q)
-
-#     # remove helper words
-#     q = re.sub(r'\b(you|provide|offer|have|available)\b', '', q)
-
-#     # clean
-#     q = re.sub(r'[^\w\s]', '', q)
-
-#     # remove stop phrases
-#     q = q.replace("you", "").replace("provide", "").replace("offer", "")
-
-#     return q.strip()
 
 def extract_main_entity(question):
 
@@ -940,6 +986,36 @@ def build_time_map(chunks, question):
             time_map[day] = time
             time_map[day] = str(time)
 
+        # ----------------------------
+        # ✅ CASE 4: GENERIC TIME (NO DAY) 
+        # ----------------------------
+        for match in re.finditer(
+            r'(\d{1,2}:\d{2}\s?(am|pm)?\s*(?:-|–|to)\s*\d{1,2}:\d{2}\s?(am|pm)?)',
+            t,
+            re.I
+        ):
+            time = match.group(1)
+
+            # normalize
+            time = normalize_time_range(time)
+
+            # fix AM/PM casing
+            time = re.sub(r'\b(am|pm)\b', lambda x: x.group().upper(), time)
+
+            # ----------------------------
+            # 🔥 MAP TO ENTITY (CRITICAL)
+            # ----------------------------
+            entity = "general"
+
+            if "breakfast" in t:
+                entity = "breakfast"
+            elif "room service" in t:
+                entity = "room service"
+            elif "restaurant" in t:
+                entity = "restaurant"
+
+            time_map[entity] = time
+
         # # ----------------------------
         # # ✅ CASE 3: CLOSED (SAFE VERSION)
         # # ----------------------------
@@ -989,6 +1065,11 @@ def handle_structured_query(question, used_chunks, all_chunks, query_type):
         print("⏰TIME MAP:", time_map)
 
         q = question.lower()
+
+        # 🔥 ENTITY-BASED TIME (NEW)
+        for k, v in time_map.items():
+            if k in q:
+                return f"{k.title()} is available from {v}."
 
         # 🔥 specific day query
         for d in DAYS:
@@ -1121,6 +1202,8 @@ def validate_context(question, used_chunks):
     return True
 
 
+
+
 # def better_time_output(text):
 
 #     if isinstance(value, dict):
@@ -1152,6 +1235,77 @@ def validate_answer(
     query_type = None
 ):
     
+    
+
+
+
+
+
+
+
+
+
+    # 🔥🔥🔥 CRITICAL FIX
+    if query_type == "list":
+        print("⚡ LIST BYPASS VALIDATION")
+
+        chunks = retrieval.get("chunks", [])
+
+        if not chunks:
+            return None, {}, {}
+
+        items = chunks[0].get("items", [])
+
+        if not items:
+            text = chunks[0].get("text", "")
+            return text, {}, {}
+
+        # ✅ format properly
+        answer = "Here are some available options:\n"
+        for item in items:
+            answer += f"• {item}\n"
+
+        return answer.strip(), {"grounded": True}, {}
+    
+
+    if query_type == "contact":
+
+        print("⚡ 😡🤓😎CONTACT BYPASS VALIDATION")
+
+        contact_blocks = [
+            c for c in retrieval.get("chunks", [])
+            if isinstance(c.get("source"), dict)
+            and c["source"].get("type") == "contact"
+        ]
+
+        if not contact_blocks:
+            return "Contact information is not available.", {}, {}
+
+        block = contact_blocks[0]
+        structured = block["source"].get("structured", [])
+
+        q = question.lower()
+
+        # -----------------------------
+        # 🔥 ROLE-SPECIFIC MATCH
+        # -----------------------------
+        for item in structured:
+            role = item["role"]
+            phone = item["phone"]
+
+            if role in q:
+                return f"{role.title()} contact number is {phone}.", {}, {}
+
+        # -----------------------------
+        # 🔥 GENERAL CONTACT
+        # -----------------------------
+        numbers = [i["phone"] for i in structured]
+
+        return "You can contact at: " + ", ".join(numbers), {}, {}
+
+
+
+
     meta = {
         "latency": {},
         "cost": {},
@@ -1279,6 +1433,10 @@ def validate_answer(
 
             return answer, {"grounded": True}, meta
         
+    
+    
+
+        
     # 🔥 FEATURE QUERY BOOST
     if query_type == "feature":
         for c in used_chunks:
@@ -1373,7 +1531,7 @@ def validate_answer(
 
     answer = remove_repetition(answer)
 
-    if query_type not in ["binary", "time", "feature"]:
+    if query_type not in ["binary", "time", "feature", "contact"]:
 
         if not is_answer_grounded(answer, used_chunks):
             end = time.time()
@@ -1385,7 +1543,7 @@ def validate_answer(
     if not validate_context(question, used_chunks):
         return fallback_response(question, used_chunks), {"grounded": False}, meta
     
-    if query_type not in ["feature", "binary"]:
+    if query_type not in ["feature", "binary", "contact"]:
     
         if not is_query_answerable(question, used_chunks):
             print("❌ FALLBACK: is_query_answerable")

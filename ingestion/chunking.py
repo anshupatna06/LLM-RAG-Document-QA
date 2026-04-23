@@ -54,19 +54,45 @@ def fix_time_fragments(text):
 
 # ----------------------------------------
 # FALLBACK: sentence splitting (keep yours)
-# ----------------------------------------
+# # ----------------------------------------
+# def split_into_sentences(text):
+
+#     sentences = re.split(
+#         r'(?:\n+|•)',   # 🔥 REMOVE "-\s+"
+#         text
+#     )
+#     # sentences = re.split(
+#     #     r'(?:\n+|•|\.\s+(?=[A-Z]))',
+#     #     text
+#     # )
+
+#     return [s.strip() for s in sentences if len(s.strip()) > 10]
+
+# def split_into_sentences(text):
+#     sentences = re.split(
+#         r'(?:\n{2,})',  # 🔥 split only on double newline
+#         text
+#     )
+
+#     return [s.strip() for s in sentences if len(s.strip()) > 20]
+
 def split_into_sentences(text):
+    # 🔥 KEEP SENTENCES INTACT
+    sentences = text.split("\n")
 
-    sentences = re.split(
-        r'(?:\n+|•)',   # 🔥 REMOVE "-\s+"
-        text
-    )
-    # sentences = re.split(
-    #     r'(?:\n+|•|\.\s+(?=[A-Z]))',
-    #     text
-    # )
+    cleaned = []
 
-    return [s.strip() for s in sentences if len(s.strip()) > 10]
+    for s in sentences:
+        s = s.strip()
+
+        # ❌ DO NOT DROP SHORT LINES
+        if len(s) < 3:
+            continue
+
+        cleaned.append(s)
+
+    return cleaned
+
 
 
 SECTION_PATTERNS = [
@@ -172,48 +198,389 @@ def clean_chunk_text(text):
 
     return clean_lines    # return LIST instead of string Because we'll further use t = text.lower().replace("\n", " ") in build_time_map function
 
+def parse_contact_items(items):
+    parsed = []
+
+    for line in items:
+        parts = line.split(":")
+
+        if len(parts) == 2:
+            role = parts[0].strip().lower()
+            phone = parts[1].strip()
+
+            parsed.append({
+                "role": role,
+                "phone": phone
+            })
+
+    return parsed
+
+
+def is_contact_heading(line):
+    return "contact" in line.lower() or "phone" in line.lower()
+
+import re
+
+def extract_contact_items(lines, start_index):
+
+    contacts = []
+
+    for i in range(start_index + 1, min(start_index + 5, len(lines))):
+        line = lines[i]
+
+        # 🔥 phone number pattern
+        numbers = re.findall(r'\b\d{10}\b', line)
+
+        if numbers:
+            contacts.append(line)
+
+        else:
+            break  # stop when pattern breaks
+
+    return contacts
+
+def extract_phone_numbers(text):
+    return re.findall(r'\b\d{10}\b', text)
+
+
+# def is_heading(line):
+
+#     line = line.strip()
+
+#     # ❌ reject time lines
+#     if re.search(r'\d{1,2}:\d{2}', line):
+#         return False
+
+#     # ❌ reject very long lines
+#     if len(line.split()) > 5:
+#         return False
+
+#     # ✅ allow title-like phrases
+#     if line.istitle():   # <-- KEY FIX
+#         return True
+
+#     # ✅ fallback: contains keywords
+#     if any(k in line.lower() for k in [
+#         "dishes", "menu", "services", "facilities",
+#         "hours", "beverages", "options"
+#     ]):
+#         return True
+
+#     return False
+
+KNOWN_HEADINGS = [
+    "facilities",
+    "breakfast",
+    "room service",
+    "meeting room",
+    "additional services"
+]
+
+
+# def is_heading(line):
+#     line = line.strip().lower()
+
+#     known_headings = [
+#         "facilities",
+#         "breakfast",
+#         "room service",
+#         "meeting room",
+#         "additional services"
+#     ]
+
+#     # ✅ exact match (strongest)
+#     if line in known_headings:
+#         return True
+
+#     # ❌ reject time lines
+#     if re.search(r'\d{1,2}:\d{2}', line):
+#         return False
+
+#     # ❌ reject sentences
+#     if any(word in line for word in [
+#         "available", "included", "service", "free", "access"
+#     ]):
+#         return False
+
+#     # ✅ short phrase heuristic
+#     if len(line.split()) <= 3:
+#         return True
+
+#     return False
 
 def is_heading(line):
+    line_clean = line.strip()
+    line_lower = line_clean.lower()
 
-    line = line.strip()
-
-    # ❌ reject time lines
-    if re.search(r'\d{1,2}:\d{2}', line):
+    # 🔥 1. reject empty
+    if not line_clean:
         return False
 
-    # ❌ reject very long lines
-    if len(line.split()) > 5:
+    # 🔥 2. reject time patterns
+    if re.search(r'\d{1,2}:\d{2}', line_clean):
         return False
 
-    # ✅ allow title-like phrases
-    if line.istitle():   # <-- KEY FIX
+    # 🔥 3. reject long sentences
+    if len(line_clean.split()) > 6:
+        return False
+
+    # 🔥 4. reject clear descriptive lines
+    if any(word in line_lower for word in [
+        "available", "included", "with", "and", "for", "to"
+    ]):
+        return False
+
+    # 🔥 5. strong signal: title case or uppercase
+    if line_clean.istitle() or line_clean.isupper():
         return True
 
-    # ✅ fallback: contains keywords
-    if any(k in line.lower() for k in [
-        "dishes", "menu", "services", "facilities",
-        "hours", "beverages", "options"
-    ]):
+    # 🔥 6. short phrase (BUT safe)
+    if 1 <= len(line_clean.split()) <= 3:
         return True
 
     return False
 
+def is_real_heading(lines, i):
+    line = lines[i]
+
+    if not is_heading(line):
+        return False
+
+    # 🔥 LOOK AHEAD
+    next_items = 0
+
+    for j in range(i + 1, min(i + 4, len(lines))):
+        if not is_heading(lines[j]):
+            next_items += 1
+
+    # 🔥 must have at least 1–2 items after it
+    return next_items >= 1
+
+
+def is_bullet(line):
+    return line.strip().startswith(("•", "-", "*"))
+
+def clean_bullet(line):
+    return line.lstrip("•-* ").strip()
+
+
+# def extract_bullet_lists(text):
+#     blocks = []
+#     lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+#     current_title = None
+#     current_items = []
+
+#     for line in lines:
+
+#         # 🔥 NEW HEADING
+#         if is_heading(line):
+
+#             # save previous block
+#             if current_title and len(current_items) >= 1:
+#                 blocks.append({
+#                     "title": current_title.lower(),
+#                     "items": current_items
+#                 })
+
+#             current_title = line
+#             current_items = []
+
+#         else:
+#             # 🔥 IMPORTANT: STOP if this line looks like a heading word inside items
+#             if any(h in line.lower() for h in [
+#                 "facilities", "breakfast", "room service",
+#                 "meeting room", "additional services"
+#             ]):
+#                 continue  # 🚨 prevent contamination
+
+#             if current_title:
+#                 current_items.append(line)
+
+#     # last block
+#     if current_title and len(current_items) >= 1:
+#         blocks.append({
+#             "title": current_title.lower(),
+#             "items": current_items
+#         })
+#         print("🔍 CHECK HEADING:", line, "→", is_heading(line))
+
+#     return blocks
+def is_valid_item(line):
+    line = line.strip()
+
+    # too short → ignore
+    if len(line) < 5:
+        return False
+
+    # looks like noise
+    if line.lower() in ["yes", "no", "ok"]:
+        return False
+
+    return True
+
+
+# def extract_bullet_lists(text):
+#     blocks = []
+#     lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+#     current_title = None
+#     current_items = []
+
+#     for i, line in enumerate(lines):
+
+#         # 🔥 detect heading
+#         if is_real_heading(lines, i):
+
+#             # save previous block
+#             if current_title and len(current_items) >= 1:
+#                 blocks.append({
+#                     "title": current_title.lower(),
+#                     "items": current_items
+#                 })
+
+#             current_title = line
+#             current_items = []
+
+#         else:
+#             if current_title and is_valid_item(line):
+
+#                 # 🔥 avoid adding next heading accidentally
+#                 if i + 1 < len(lines) and is_heading(lines[i + 1]):
+#                     current_items.append(line)
+#                 else:
+#                     current_items.append(line)
+
+#     # last block
+#     if current_title and len(current_items) >= 1:
+#         blocks.append({
+# #             "title": current_title.lower(),
+# #             "items": current_items
+# #         })
+
+# #     return blocks
+
+# def extract_bullet_lists(text):
+#     blocks = []
+#     lines = [l.strip() for l in text.split("\n") if l.strip()]
+
+#     current_title = None
+#     current_items = []
+
+#     for line in lines:
+
+#         # 🔥 CASE 1: BULLET ITEM
+#         if is_bullet(line):
+#             if current_title:
+#                 current_items.append(clean_bullet(line))
+#             continue
+
+#         # 🔥 CASE 2: NON-BULLET LINE → POSSIBLE HEADING
+#         if is_heading(line):
+
+#             # save previous block
+#             if current_title and current_items:
+#                 blocks.append({
+#                     "title": current_title.lower(),
+#                     "items": current_items
+#                 })
+
+#             current_title = line
+#             current_items = []
+
+#         # 🔥 CASE 3: fallback (non-bullet item)
+#         else:
+#             if current_title:
+#                 current_items.append(line)
+
+#     # last block
+#     if current_title and current_items:
+#         blocks.append({
+#             "title": current_title.lower(),
+#             "items": current_items
+#         })
+
+#     return blocks
+
+def is_strong_heading(line):
+    line = line.strip()
+
+    # 🔥 1. Title Case (IMPORTANT)
+    if line.istitle() and len(line.split()) <= 4:
+        return True
+
+    # 🔥 2. ALL CAPS
+    if line.isupper():
+        return True
+
+    # 🔥 3. Known section keywords
+    keywords = [
+        "facilities", "services", "dishes",
+        "menu", "beverages", "hours",
+        "options", "amenities"
+    ]
+
+    if any(k in line.lower() for k in keywords):
+        return True
+
+    # ❌ reject sentences
+    if any(w in line.lower() for w in [
+        "available", "included", "free", "service"
+    ]):
+        return False
+
+    return False
+
+
 
 def extract_bullet_lists(text):
-
     blocks = []
     lines = [l.strip() for l in text.split("\n") if l.strip()]
 
     current_title = None
     current_items = []
 
-    for line in lines:
+    for i, line in enumerate(lines):
 
-        # 🔥 detect heading (short + no numbers)
-        if is_heading(line) and not re.search(r'\d{1,2}:\d{2}', line):
+        # -------------------------
+        # 🔥 1. CONTACT BLOCK (HIGHEST PRIORITY)
+        # -------------------------
+        if is_contact_heading(line):
 
-            # save previous block
-            if current_title and len(current_items) >= 2:
+            # 🔥 save previous block
+            if current_title and current_items:
+                blocks.append({
+                    "title": current_title.lower(),
+                    "items": current_items
+                })
+
+            items = extract_contact_items(lines, i)
+            parsed_items = parse_contact_items(items)
+
+            if items:
+                blocks.append({
+                    "title": "contact information",
+                    "items": items,
+                    "structured": parsed_items,
+                    "type": "contact"
+                })
+
+            # 🔥 RESET state (VERY IMPORTANT)
+            current_title = None
+            current_items = []
+
+            continue  # 🚀 skip further processing
+
+        # -------------------------
+        # 🔥 2. NORMAL HEADING
+        # -------------------------
+
+        # -------------------------
+        # 🔥 STRONG HEADING DETECTION
+        # -------------------------
+        if is_strong_heading(line):
+
+            if current_title and current_items:
                 blocks.append({
                     "title": current_title.lower(),
                     "items": current_items
@@ -223,18 +590,20 @@ def extract_bullet_lists(text):
             current_items = []
 
         else:
-            current_items.append(line)
+            # 🔥 ALWAYS treat as item if inside a block
+            if current_title:
+                current_items.append(line)
 
     # last block
-    if current_title and len(current_items) >= 2:
+    if current_title and current_items:
         blocks.append({
             "title": current_title.lower(),
             "items": current_items
         })
 
-        print("🔍 CHECK HEADING:", line, "→", is_heading(line))
-
     return blocks
+
+
 
 def protect_day_ranges(text):
     return re.sub(
@@ -284,9 +653,10 @@ def process_documents(documents, business_id):
         for block in list_blocks:
             list_chunks.append({
                 "text": " | ".join(block["items"]),
-                "type": "list",
+                "type": block.get("type", "list"),  # 🔥 IMPORTANT
                 "list_title": block["title"],
                 "items": block["items"],
+                "structured": block.get("structured", []),  # 🔥 ADD THIS
                 "business_id": business_id,
                 "source": source,
                 "section": detect_section(block["title"])
