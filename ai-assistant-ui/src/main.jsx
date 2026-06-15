@@ -21,6 +21,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/:business/:client" element={<App />} />
+        <Route path="/admin" element={<App />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>

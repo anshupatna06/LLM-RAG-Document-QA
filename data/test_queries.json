@@ -1,0 +1,16 @@
+[
+  { "query": "wifi hai kya", "expected_type": "binary" },
+  { "query": "facilities kya hai", "expected_type": "list" },
+  { "query": "breakfast timing kya hai", "expected_type": "time" },
+
+  { "query": "subidha kya hai", "expected_type": "list" },
+  { "query": "kya kya suvidha hai", "expected_type": "list" },
+  { "query": "wifi free hai kya", "expected_type": "binary" },
+  { "query": "checkin time kya hai", "expected_type": "time" },
+  { "query": "manager ka number kya hai", "expected_type": "contact" },
+
+  { "query": "wifi", "expected_type": "entity" },
+  { "query": "parking", "expected_type": "entity" },
+
+  { "query": "what facilities are available", "expected_type": "list" }
+]

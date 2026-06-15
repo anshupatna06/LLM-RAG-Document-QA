@@ -5,6 +5,10 @@ from agent.tools.validate import is_time_query
 import math
 from agent.utils.query_classifier import (
     is_time_query,
+    detect_time_intent,
+    INTENT_RETRIEVAL_KEYWORDS,
+    has_intent_evidence,
+    get_fallback_response,
     is_list_query,
     is_binary_question,
     is_feature_query,
@@ -73,6 +77,54 @@ def rerank(query, results):
     scored.sort(key = lambda x : x[0], reverse=True)
 
     return scored
+
+
+
+
+def rerank_by_intent(
+    chunks,
+    intent
+):
+
+    keywords = (
+        INTENT_RETRIEVAL_KEYWORDS.get(
+            intent,
+            []
+        )
+    )
+
+    if not keywords:
+        return chunks
+
+    scored = []
+
+    for chunk in chunks:
+
+        score = 0
+
+        text = chunk.lower()
+
+        for keyword in keywords:
+
+            if keyword in text:
+                score += 10
+
+        scored.append(
+            (score, chunk)
+        )
+
+    scored.sort(
+        reverse=True,
+        key=lambda x: x[0]
+    )
+
+    return [
+        chunk
+        for score, chunk
+        in scored
+    ]
+
+
 
 
 # ----------------------------------------
@@ -368,7 +420,7 @@ def normalize_chunk(c):
 # MAIN RETRIEVAL PIPELINE
 # ----------------------------------------
 
-def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
+def retrieve_chunks(query, index, pipeline, business_id, memory, query_type, intent = None):
     fine_chunks = index["fine_chunks"]
     coarse_chunks = index["coarse_chunks"]
     list_chunks = index.get("list_chunks", [])
@@ -387,6 +439,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     }
 
     original_user_query = query
+    translated_query = query
 
     # -----------------------------
     # NORMALIZE QUERY
@@ -395,42 +448,15 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
 
     
 
-    query_type = detect_query_type(
-        query,
-        original_query=original_user_query,
-        list_chunks=index.get("list_chunks", [])
-    )
+    # query_type = detect_query_type(
+    #     translated_query,  # after to_english
+    #     original_query=original_user_query,
+    #     list_chunks=index.get("list_chunks", [])
+    # )
     print("RETRIEVAL QUERY TYPE:", query_type)
 
 
-    # -----------------------------
-    # # 🔥 CONTACT EARLY RETURN
-    # # -----------------------------
-    # if query_type == "contact":
-
-    #     print("🚀 CONTACT EARLY RETURN TRIGGERED")
-
-    #     contact_blocks = [
-    #         c for c in list_chunks
-    #         if c.get("type") == "contact"
-    #     ]
-
-    #     if contact_blocks:
-    #         block = contact_blocks[0]
-
-    #         return {
-    #             "chunks": [
-    #                 {
-    #                     "text": block["text"],
-    #                     "source": block,
-    #                     "type": "contact",
-    #                     "score": 1.0
-    #                 }
-    #             ],
-    #             "used_chunks": 1,
-    #             "retrieved_chunks": 1,
-    #             "sources": [block["source"]]
-    #         }
+    
     
     # -----------------------------
     # 🔥 HADLE LIST EARLY
@@ -463,88 +489,21 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
                 ],
                 "used_chunks": 1,
                 "retrieved_chunks": 1,
-                "sources": [top[0]]
+                "sources": [top[0]],
+                "evidence_found": True,
+                "intent": None
             }
 
 
 
-    # -----------------------------
-    # 🔥 STEP 3: NORMAL RETRIEVAL SETUP
-    # # -----------------------------
-    # if query_type == "time":
-    #     # 🔥 time lives in structured / coarse chunks
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
-    # elif query_type == "list":
-    #     # 🔥 list handled separately (early return below)
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
-    # elif query_type == "binary":
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
-    # elif query_type == "feature":
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
-    # else:  # general
-    #     active_chunks = coarse_chunks
-    #     active_embeddings = coarse_embeddings
-    #     active_bm25 = coarse_bm25
-
+    
     active_chunks = coarse_chunks
     active_embeddings = coarse_embeddings
     active_bm25 = coarse_bm25
 
 
 
-    # -----------------------------
-    # 🔥 LIST QUERY ROUTING (NEW)
-    # -----------------------------
-    # if is_list_query(query):
-
-    #     list_chunks = index.get("list_chunks", [])
-
-    #     if list_chunks:
-    #         ranked = sorted(
-    #             list_chunks,
-    #             key=lambda c: score_list_block(query, c),
-    #             reverse=True
-    #         )
-
-            
-
-    #         print("\n🏆 RANKED LIST CHUNKS:")
-    #         for r in ranked[:5]:
-    #             print(r["list_title"])
-
-    #         # return TOP MATCH directly
-    #         top = ranked[:1]
-            
-
-    #         print("🔥 ENTERED LIST PIPELINE")
-
-    #         list_chunks = index.get("list_chunks", [])
-
-    #         print("📊 AVAILABLE LIST CHUNKS:", len(list_chunks))
-
-    #         print("\n✅ RETURNING LIST CHUNKS:")
-    #         for t in top:
-    #             print(t["list_title"], t["items"])
-
-    #         return {
-    #             "chunks": top,
-    #             "used_chunks": len(top),
-    #             "retrieved_chunks": len(top),
-    #             "sources": top
-    #         }
-
+    
     
         
 
@@ -566,7 +525,10 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
             "chunks": [],
             "used_chunks": 0,
             "retrieved_chunks": 0,
-            "sources": []
+            "sources": [],
+
+            "evidence_found": False,
+            "intent": None
         }
 
     # -----------------------------
@@ -699,6 +661,15 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
             combined[chunk_id]["bm25"] = bm25_scaled
 
     is_time = is_time_query(query)
+    # intent = detect_time_intent(query)
+
+
+    keywords = (
+        INTENT_RETRIEVAL_KEYWORDS.get(
+            intent,
+            []
+        )
+    )
     retrieved = []
 
     for chunk_id, scores in combined.items():
@@ -709,14 +680,20 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
         )
 
         
-        if is_time_query(query):
-            if re.search(r'\d{1,2}:\d{2}|closed', scores["text"], re.I):
-                hybrid_score += 1.0   # 🔥 VERY STRONG BOOST
+        # if is_time_query(query):
+        #     if re.search(r'\d{1,2}:\d{2}|closed', scores["text"], re.I):
+        #         hybrid_score += 1.0   # 🔥 VERY STRONG BOOST
 
         
-        if is_time_query(query):
-            if "to" in scores["text"].lower():
-                hybrid_score += 0.5
+        # if is_time_query(query):
+        #     if "to" in scores["text"].lower():
+        #         hybrid_score += 0.5
+
+        text = scores["text"].lower()
+
+        for keyword in keywords:
+            if keyword in text:
+                hybrid_score += 2.0
 
         if is_list_query(query):
             if re.search(r'\d{1,2}:\d{2}', scores["text"]):
@@ -741,9 +718,10 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
             (hybrid_score, scores["text"], scores["source"])
         )
 
-
+    print("INTENT:", intent)
 
     retrieved.sort(reverse=True)
+
 
     # 🔥 FORCE include time chunks for time queries
     time_chunks = [] #ALWAYS NITIALIZE FIRST
@@ -834,6 +812,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     print("Vector results:", len(vector_results))
     print("BM25 results:", len(keyword_results))
     print("Hybrid results:", len(retrieved))
+    print("INTENT =", detect_time_intent(query))
 
     
 
@@ -878,6 +857,18 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     print("\n🧠 FINAL SCORING:")
     for c in list_chunks:
         print(c["list_title"], "→", score_list_block(original_user_query, c))
+
+    evidence_found = True
+    if intent != "general_time":
+        evidence_found = has_intent_evidence(intent, retrieved)
+
+    print("FINAL INTENT:", intent)
+    print("RETRIEVED SAMPLE:", retrieved[:3])
+    print("FINAL EVIDENCE:", evidence_found)
+
+
+    for score, text, source in retrieved[:5]:
+        print(score, text[:100])
 
 
 
@@ -981,7 +972,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
     print("IS LIST:", is_list_query(query))
 
     
-
+    
     # -----------------------------
     # RETURN
     # -----------------------------
@@ -992,5 +983,7 @@ def retrieve_chunks(query, index, pipeline, business_id, memory, query_type):
         "sources": list(set([
            c["source"]["source"] if isinstance(c["source"], dict) else c["source"]
            for c in debug if c.get("used", True)
-        ]))
+        ])),
+        "evidence_found": evidence_found,
+        "intent": intent
     }

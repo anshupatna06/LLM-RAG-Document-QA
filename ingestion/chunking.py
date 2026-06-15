@@ -272,7 +272,7 @@ KNOWN_HEADINGS = [
     "facilities",
     "breakfast",
     "room service",
-    "meeting room",
+    "meeting rooms",
     "additional services"
 ]
 

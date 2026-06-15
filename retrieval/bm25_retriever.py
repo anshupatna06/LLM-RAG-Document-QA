@@ -35,6 +35,11 @@ class BM25Retriever:
 
         results = []
 
+        try:
+            k = int(k)
+        except:
+            k = 5
+
         for idx, score in ranked[:k]:
 
             results.append((score, self.chunks[idx]["text"], self.chunks[idx]))

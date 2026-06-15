@@ -12,8 +12,20 @@ from agent.tools.suggest import generate_suggestions
 
 from business.business_config import get_business_config
 from agent.utils.intent import detect_intent
-from agent.utils.query_classifier import is_time_query, is_list_query, is_binary_question, is_feature_query, detect_query_type, is_contact_query
+from agent.utils.query_classifier import is_time_query, detect_time_intent, is_list_query, is_binary_question, is_feature_query, detect_query_type, is_contact_query
 # from rag_core import normalize_sub_query
+
+from agent.utils.normalizer import normalize_local_query
+#from agent.utils.action_generator import generate_actions
+from agent.utils.HOTEL_CONFIGURATION import HOTEL_CONFIG
+from agent.utils.fallback_handler import fallback_response
+from agent.utils.speech_normalizer import normalize_speech_query
+#from business.hotel_config import HOTEL_CONFIG
+
+from business.hotel.actions import generate_hotel_actions
+
+from business.hotel.intents import is_hotel_action_query
+from agent.utils.query_classifier import get_fallback_response
 
 DEFAULT_TOP_K = 3
 DEFAULT_THRESHOLD = 0.30
@@ -41,6 +53,7 @@ DEFAULT_THRESHOLD = 0.30
 import time
 import re
 from collections import OrderedDict
+from agent.utils.translator import is_hindi, to_english, to_hindi
 
 CACHE = OrderedDict()
 CACHE_TTL = 300
@@ -176,6 +189,170 @@ def binary_from_chunks(query, chunks):
 
 
 
+# def is_action_query(query):
+
+#     q = query.lower().strip()
+
+#     # request verbs
+#     request_words = [
+#         "need",
+#         "send",
+#         "bring",
+#         "help",
+#         "request",
+#         "provide"
+#     ]
+
+#     # service nouns
+#     services = [
+#         "towel",
+#         "blanket",
+#         "wifi",
+#         "food",
+#         "water",
+#         "cleaning",
+#         "housekeeping"
+#     ]
+
+#     has_request = any(w in q for w in request_words)
+#     has_service = any(s in q for s in services)
+
+#     return has_request and has_service
+
+def is_action_query(query):
+
+    q = query.lower().strip()
+
+    # --------------------------------
+    # explicit request verbs
+    # --------------------------------
+    request_words = [
+        "need",
+        "send",
+        "bring",
+        "help",
+        "request",
+        "provide",
+        "want"
+    ]
+
+    # --------------------------------
+    # operational services
+    # --------------------------------
+    operational_services = [
+
+        # room items
+        "towel",
+        "blanket",
+        "pillow",
+        "water",
+        "water bottle",
+
+        # maintenance
+        "cleaning",
+        "housekeeping",
+        "ac",
+        "air conditioning",
+        "tv",
+
+        # internet
+        "wifi",
+        "internet",
+
+        # food
+        "food",
+        "breakfast",
+        "lunch",
+        "dinner",
+        "tea",
+        "coffee",
+
+        # assistance
+        "reception",
+        "staff"
+    ]
+
+    # --------------------------------
+    # informational patterns
+    # --------------------------------
+    # informational_patterns = [
+    #     "available",
+    #     "timing",
+    #     "time",
+    #     "what",
+    #     "how",
+    #     "price",
+    #     "facility"
+    # ]
+
+    ACTION_VERBS = [
+
+        "need",
+        "send",
+        "bring",
+        "provide",
+        "deliver",
+        "arrange",
+        "book",
+        "call",
+
+        "want",
+        "require",
+
+        "clean",
+        "repair",
+        "fix",
+
+        "help me",
+        "please send",
+        "please bring",
+        "please provide"
+    ]
+
+    has_request = any(w in q for w in request_words)
+    has_service = any(s in q for s in operational_services)
+    #is_informational = any(p in q for p in informational_patterns)
+    has_action_verb = any(verb in q for verb in ACTION_VERBS)
+
+    # --------------------------------
+    # decision
+    # --------------------------------
+
+    # explicit service request
+    if has_request and has_service:
+        return True
+
+    # # short operational query
+    # if has_service and len(q.split()) <= 3 and not is_informational:
+    #     return True
+    if has_action_verb and has_service:
+        return True
+
+    return False
+
+
+# HINGLISH_MAP = {
+#     "subidha": "suvidha",
+#     "suvidha": "facilities",
+#     "facility": "facilities",
+#     "wifi": "wifi",
+#     "net": "internet",
+#     "khana": "food",
+#     "nashta": "breakfast"
+# }
+
+# def normalize_local_query(query):
+
+#     q = query.lower()
+
+#     for k, v in HINGLISH_MAP.items():
+#         if k in q:
+#             q = q.replace(k, v)
+
+#     return q
+
+
+
 
 
 class AgentExecutor:
@@ -227,16 +404,54 @@ class AgentExecutor:
         coarse_bm25 = self.index["coarse_bm25"]
 
 
-    def run(self, query: str, business_id: str, memory=None):
+    def run(self, query: str, business_id: str, client_id: str, memory=None):
+        print("🔥🔥🔥 EXECUTOR FILE HIT 🔥🔥🔥")
 
         print("🚨 EXECUTOR START")
+
+        client_id = client_id.lower()
+        business_id = business_id.lower()
+
+        
+        actions = []
+        original_query = query
+
+        with open("logs/user_queries.txt", "a", encoding="utf-8") as f:
+            f.write(original_query + "\n")
+
+        # if business_id == "hotel":
+        #     if is_hotel_action_query(query):
+        #         print("⚡ ACTION QUERY DETECTED")
+
+        #         return {
+        #             "answer": "✅ Your request has been prepared. Reception or housekeeping will assist you shortly.",
+        #             "actions": generate_hotel_actions(query, "action"),
+        #             "contact": {
+        #                 "phone": HOTEL_CONFIG[client_id]["phone"],
+        #                 "whatsapp": HOTEL_CONFIG[client_id]["whatsapp"]
+        #             },
+        #             "skip_retrieval": True
+        #         }
+
+        # 🔥 NEW STEP
+        query = normalize_local_query(query)
+        print("🌐 original_query", original_query)
+        is_hindi_query = is_hindi(original_query)
+        print("🌐 is hindi :", is_hindi_query)
+
+        if is_hindi_query:
+            print("🌐 HINDI QUERY DETECTED")
+            query = to_english(query)
+            print("🔄 TRANSLATED QUERY:", query)
+
+        translated_query = query  # after to_english
 
         metrics = {}
         performance = {}
         answer = ""
         answer_part = ""
         force_binary = False
-        original_user_query = query
+        original_user_query = original_query
 
         # -----------------------------
         # 🔥 CACHE CHECK (TOP)
@@ -267,12 +482,12 @@ class AgentExecutor:
         # --------------------------------------------------
         config = get_business_config(business_id)
 
-        memory.config["business_name"] = config["name"]
-        memory.config["tone_prompt"] = config["tone_prompt"]
+        memory.config["business_name"] = config.get("name", business_id)
+        memory.config["tone_prompt"] = config.get("tone_prompt", business_id)
 
         memory.config["system_prompt"] = f"""
-        You are assistant for {config['name']}.
-        {config['tone_prompt']}
+        You are assistant for {config.get("name", business_id)}.
+        {config.get("tone_prompt", business_id)}
         
         Respond in a warm, helpful and professional hospitality tone.
         Answer only from provided context.
@@ -280,7 +495,7 @@ class AgentExecutor:
         Keep answers concise and clear.
         """
 
-        memory.log("business", config["name"])
+        memory.log("business", config.get("name", business_id))
 
         # --------------------------------------------------
         # STEP 1 — QUERY REWRITE
@@ -298,7 +513,8 @@ class AgentExecutor:
         # sub_queries = [self.pipeline.rewrite_query(p, memory) for p in sub_queries]
 
         # 🔥 CRITICAL FIX
-        sub_queries = [original_user_query]
+        #sub_queries = [original_user_query]
+        sub_queries = [translated_query]
 
         # 🔥 multi-query override
         if len(sub_queries) > 1:
@@ -312,57 +528,60 @@ class AgentExecutor:
         memory.execution["intent"] = intent
         memory.log("intent", intent)
 
-        # -----------------------------
-        # # 🔥 QUERY TYPE DETECTION (MOVE HERE)
-        # # -----------------------------
-        # if force_binary:
-        #     query_type = "binary"
+        
 
-        # if is_binary_question(query):
-        #     query_type = "binary"
-
-        # elif is_time_query(query):
-        #     query_type = "time"
-
-        # elif is_list_query(query):
-        #     query_type = "list"
-
-        # elif is_feature_query(query):
-        #     query_type = "feature"   # 🔥 NEW
-
-
-        # else:
-        #     query_type = "general"
-
-
-        query_type = detect_query_type(
-            query,
+        # query_type = detect_query_type(
+        #     translated_query,  # after to_english
+        #     original_query=original_user_query,  # ⚠️ IMPORTANT
+        #     force_binary=force_binary,
+        #     list_chunks=self.index.get("list_chunks", [])
+        # )
+        translated_query = normalize_speech_query(translated_query)
+        route = detect_query_type(
+            translated_query,  # after to_english
             original_query=original_user_query,  # ⚠️ IMPORTANT
             force_binary=force_binary,
             list_chunks=self.index.get("list_chunks", [])
         )
 
-        # if is_contact_query(original_user_query):
-        #     print("🔥 CONTACT OVERRIDE FROM ORIGINAL QUERY")
-        #     query_type = "contact"
+        if route == "action":
 
-        print("🧠 EXECUTOR QUERY TYPE:", query_type)
+            print("⚡ ACTION ROUTE")
+
+            return {
+                "answer":
+                "✅ Your request has been prepared. Reception or housekeeping will assist you shortly.",
+
+                "actions":
+                    generate_hotel_actions(
+                        translated_query,
+                        "action"
+                    ),
+
+                "contact": {
+                    "phone":
+                        HOTEL_CONFIG[client_id]["phone"],
+
+                    "whatsapp":
+                        HOTEL_CONFIG[client_id]["whatsapp"]
+                },
+
+                "skip_retrieval": True
+            }
+        
+
+
+        print("🧠 EXECUTOR QUERY TYPE:", route)
+        print("ACTION CHECK:", query)
+        print("IS ACTION:", is_hotel_action_query(query))
+
+        intent = detect_time_intent(translated_query)
 
         #print("🧠 EXECUTOR QUERY TYPE:", query_type)
 
+        
 
-        # -----------------------------
-        # 🔥 CACHE CHECK
-        # # -----------------------------
-        # print("🔍 CHECKING CACHE")
 
-        # if query_type in ["time", "list", "binary", "feature"]:
-        #     cache_key = normalize_query(query)
-        #     cached = get_cached_response(cache_key, business_id)
-
-        #     if cached:
-        #         print("⚡ CACHE HIT")
-        #         return cached
 
 
         # --------------------------------------------------
@@ -376,29 +595,7 @@ class AgentExecutor:
 
         for q in sub_queries:
 
-            # retrieval = retrieve_chunks(
-            #     q,
-            #     self.pipeline,
-            #     self.chunk_embeddings,
-            #     self.chunks,
-            #     self.top_k,
-            #     self.threshold,
-            #     business_id,
-            #     memory
-            # )
-            # retrieval = retrieve_chunks(
-            #     query,
-            #     self.index,
-            #     self.pipeline,
-            #     self.fine_chunks,
-            #     self.coarse_chunks,
-            #     self.fine_embeddings,
-            #     self.coarse_embeddings,
-            #     self.fine_bm25,
-            #     self.coarse_bm25,
-            #     business_id,
-            #     memory
-            # )
+            
 
             sub_cache_key = normalize_query(q)
 
@@ -411,66 +608,45 @@ class AgentExecutor:
                 continue
 
             retrieval = retrieve_chunks(
-                query,
+                translated_query,
                 self.index,
                 self.pipeline,
                 business_id,
                 memory,
-                query_type    # 🔥 ADD THIS
+                route, 
+                intent    # 🔥 ADD THIS
             )
 
-            # if query_type == "binary":
+            retrieval_route = route  # since we passed it
 
-            #     # 🔥 FIRST: LIST BLOCK (STRUCTURED)
-            #     exists, block = check_binary_from_list(
-            #         query,
-            #         self.index.get("list_chunks", [])
-            #     )
+            if retrieval_route != route:
+                print("⚠️ ROUTE MISMATCH:", route, retrieval_route)
 
-            #     if exists:
-            #         print("🔥 BINARY OVERRIDE FROM LIST")
 
-            #         return {
-            #             "answer": f"Yes, {block['list_title']} is available.",
-            #             "sources": [],
-            #             "retrieval": {}
-            #         }
+            intent = retrieval.get("intent")
 
-            #     # 🔥 SECOND: CHUNK LEVEL (VERY IMPORTANT)
-            #     all_chunks = retrieval.get("chunks", [])
-
-            #     exists_text, matched_text = binary_from_chunks(query, all_chunks)
-
-            #     if exists_text:
-            #         print("🔥 BINARY YES FROM CHUNKS")
-
-            #         return {
-            #             "answer": "Yes, it is available.",
-            #             "sources": [],
-            #             "retrieval": {}
-            #         }
-
-            #     # 🔥 FINAL: NO
-            #     print("❌ BINARY FINAL → NO")
-
-            #     return {
-            #         "answer": "No, this is not available.",
-            #         "sources": [],
-            #         "retrieval": {}
-            #     }                    
-
+            if (
+                intent is not None
+                and not retrieval.get("evidence_found", True)
+                ):
+                    return {
+                        "answer": get_fallback_response(intent),
+                        "sources": [],
+                        "actions": []
+                    }
+            
 
             all_retrieved_chunks.extend(retrieval["chunks"])
             all_sources.extend(retrieval["sources"])
 
             answer_part, metrics, performance = validate_answer(
-                q,
+                translated_query,
                 retrieval,
                 self.pipeline,
                 start,
                 memory.config["system_prompt"],
                 memory,
-                query_type = query_type
+                query_type = route
             )
 
             if answer_part:
@@ -481,13 +657,14 @@ class AgentExecutor:
 
             if not answer_part:
 
-                if query_type == "contact":
+                if route == "contact":
                     return "Contact information is not available.", {}, {}
 
                 print("⚠️ EMPTY ANSWER FROM VALIDATE")
-                answer_part = "I found some related information, but not enough to answer confidently."
+                answer_part, actions = fallback_response(q, retrieval.get("chunks"))
 
-            
+        
+            #actions = meta.get("actions", [])
 
         
         # combine answers from all sub-queries
@@ -514,9 +691,10 @@ class AgentExecutor:
         print("Sub queries:", sub_queries)
 
         print("\n🔍 Final retrieved chunks:", retrieval["used_chunks"])
-        print("🧠 GENERATING SUGGESTIONS FOR:", query_type)
+        print("🧠 GENERATING SUGGESTIONS FOR:", route)
 
         print("DEBUG QUERY:", query)
+        print("🔍 RETRIEVAL QUERY:", query)
         print("DEBUG RETRIEVAL TYPE:", type(retrieval))
 
         print("❌ FALLBACK: is_query_answerable")
@@ -525,9 +703,17 @@ class AgentExecutor:
         print("❌ FALLBACK: validate_context")
 
         print("🧠 ORIGINAL QUERY:", original_user_query)
+        print("🧠 IS HINDI:", is_hindi_query)
         print("🧠 FINAL QUERY:", query)
         print("🧠 SUB QUERIES:", sub_queries)
-        print("🧠 FINAL QUERY TYPE:", query_type)
+        print("🧠 FINAL QUERY TYPE:", route)
+
+        print(is_hindi("कौन-कौन सी सुविधाएँ उपलब्ध हैं"))
+
+        print("🧠 ORIGINAL QUERY:", original_query)
+        print("🧠 IS HINDI:", is_hindi_query)
+        print("BUSINESS ID:", business_id)
+        print("AVAILABLE CONFIG KEYS:", HOTEL_CONFIG.keys())
         # --------------------------------------------------
         # STEP 3 — PLANNER DECISION
         # --------------------------------------------------
@@ -591,8 +777,13 @@ class AgentExecutor:
             first_turn=first_turn
         )
 
+        if is_hindi_query and suggestions:
+            suggestions = [to_hindi(s) for s in suggestions]
+
         memory.log("answer", "Generated grounded response")
-        memory.log("query_type", query_type)
+        memory.log("query_type", route)
+
+        memory.log("route", route)
 
         # 🔥 normalize final_answer
         meta = {}
@@ -602,9 +793,25 @@ class AgentExecutor:
         else:
             answer_text = final_answer
 
+        if is_hindi_query:
+            print("🔄 TRANSLATING RESPONSE TO HINDI")
+            answer_text = to_hindi(answer_text)
+
+        #actions = generate_hotel_actions(answer_text, route, original_query)
+        actions = generate_hotel_actions(original_query, route)
+
+
+        client_config = HOTEL_CONFIG.get(client_id, {})
+
         result = {
             "decision": "ANSWER",
             "answer": answer_text,
+            #"actions": actions if actions else generate_hotel_actions(answer_text, route, q),
+            "actions": actions if actions else generate_hotel_actions(q, route),
+            "contact": {
+                "phone": client_config.get("phone"),
+                "whatsapp": client_config.get("whatsapp")
+            },
             "meta": meta, # NEW FIELD
             "suggestions": suggestions,
             "sources": retrieval["sources"],
@@ -630,7 +837,7 @@ class AgentExecutor:
         # -----------------------------
         # 🔥 STORE SUB-QUERY CACHE
         # -----------------------------
-        if query_type in ["time", "list", "binary", "feature"]:
+        if route in ["time", "list", "binary", "feature"]:
             sub_result = {
                 "answer": answer_part,
                 "sources": retrieval.get("sources", [])
@@ -641,7 +848,7 @@ class AgentExecutor:
         # -----------------------------
         # 🔥 CACHE STORE (OPTIONAL)
         # # -----------------------------
-        if query_type in ["time", "list", "binary", "feature"]:
+        if route in ["time", "list", "binary", "feature"]:
             set_cached_response(cache_key, business_id, result)
 
         # -----------------------------
@@ -649,6 +856,8 @@ class AgentExecutor:
         # -----------------------------
         print("✅ FINAL RETURN")
         print("🧠 CACHE SIZE:", len(CACHE))
+
+        
         return result
         
         

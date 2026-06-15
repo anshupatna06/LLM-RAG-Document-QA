@@ -23,3 +23,4 @@ HOTEL_CONFIG = {
         "rooms"
     ]
 }
+

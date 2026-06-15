@@ -1,9 +1,11 @@
 import time
 import re
 from agent.utils.entity import detect_entity
+from agent.utils.fallback_handler import fallback_response
 
 from agent.utils.query_classifier import (
     is_time_query,
+    detect_time_intent,
     is_list_query,
     is_binary_question,
     route_query,
@@ -11,12 +13,12 @@ from agent.utils.query_classifier import (
 )
 
 
-def fallback_response(question, used_chunks=None):
+# def fallback_response(question, used_chunks=None):
 
-    if used_chunks:
-        return "I found some related information, but not enough to answer confidently."
+#     if used_chunks:
+#         return "I found some related information, but not enough to answer confidently."
 
-    return "I couldn't find that information in the provided documents."
+#     return "I couldn't find that information in the provided documents."
 
 
 
@@ -1247,25 +1249,32 @@ def validate_answer(
 
     # 🔥🔥🔥 CRITICAL FIX
     if query_type == "list":
-        print("⚡ LIST BYPASS VALIDATION")
+        # 🔥 SAFETY CHECK
+        if not any(word in question.lower() for word in [
+            "facilities", "services", "amenities", "list"
+        ]):
+            print("⚠️ NOT A TRUE LIST QUERY → SKIP BYPASS")
+        else:
+            print("⚡ LIST BYPASS VALIDATION")
+            
 
-        chunks = retrieval.get("chunks", [])
+            chunks = retrieval.get("chunks", [])
 
-        if not chunks:
-            return None, {}, {}
+            if not chunks:
+                return None, {}, {}
 
-        items = chunks[0].get("items", [])
+            items = chunks[0].get("items", [])
 
-        if not items:
-            text = chunks[0].get("text", "")
-            return text, {}, {}
+            if not items:
+                text = chunks[0].get("text", "")
+                return text, {}, {}
 
-        # ✅ format properly
-        answer = "Here are some available options:\n"
-        for item in items:
-            answer += f"• {item}\n"
+            # ✅ format properly
+            answer = "Here are some available options:\n"
+            for item in items:
+                answer += f"• {item}\n"
 
-        return answer.strip(), {"grounded": True}, {}
+            return answer.strip(), {"grounded": True}, {}
     
 
     if query_type == "contact":
@@ -1402,7 +1411,12 @@ def validate_answer(
             return structured_answer, {"grounded": True}, meta  # 🔥 FORCE TRUE
         
         if not is_answer_grounded(structured_answer, used_chunks):
-            return fallback_response(question, used_chunks), {"grounded": False}, meta
+            #return fallback_response(question, used_chunks), {"grounded": False}, meta
+            answer, actions = fallback_response(question, used_chunks)
+
+            meta["actions"] = actions   # 🔥 inject here
+
+            return answer, {"grounded": False}, meta
         
         return structured_answer, {"grounded": True}, meta
 
@@ -1505,11 +1519,21 @@ def validate_answer(
     ])
 
     if not is_query_answerable(question, used_chunks):
-        return fallback_response(question, used_chunks), {"grounded": False}, meta
+        #return fallback_response(question, used_chunks), {"grounded": False}, meta
+        answer, actions = fallback_response(question, used_chunks)
+
+        meta["actions"] = actions   # 🔥 inject here
+
+        return answer, {"grounded": False}, meta
 
     if is_price_query(question):
         if not re.search(r'\d+|\$', context):
-            return fallback_response(question, used_chunks), {"grounded": False}, meta
+            #return fallback_response(question, used_chunks), {"grounded": False}, meta
+            answer, actions = fallback_response(question, used_chunks)
+
+            meta["actions"] = actions   # 🔥 inject here
+
+            return answer, {"grounded": False}, meta
 
 
 
@@ -1537,21 +1561,41 @@ def validate_answer(
             end = time.time()
             meta["latency"]["total_sec"] = round(end - start_time, 3)
 
-            return fallback_response(question, used_chunks), {"grounded": False}, meta
+            #return fallback_response(question, used_chunks), {"grounded": False}, meta
+            answer, actions = fallback_response(question, used_chunks)
+
+            meta["actions"] = actions   # 🔥 inject here
+
+            return answer, {"grounded": False}, meta
         
 
     if not validate_context(question, used_chunks):
-        return fallback_response(question, used_chunks), {"grounded": False}, meta
+        #return fallback_response(question, used_chunks), {"grounded": False}, meta
+        answer, actions = fallback_response(question, used_chunks)
+
+        meta["actions"] = actions   # 🔥 inject here
+
+        return answer, {"grounded": False}, meta
     
     if query_type not in ["feature", "binary", "contact"]:
     
         if not is_query_answerable(question, used_chunks):
             print("❌ FALLBACK: is_query_answerable")
-            return fallback_response(question, used_chunks), {"grounded": False}, meta
+            #return fallback_response(question, used_chunks), {"grounded": False}, meta
+            answer, actions = fallback_response(question, used_chunks)
+
+            meta["actions"] = actions   # 🔥 inject here
+
+            return answer, {"grounded": False}, meta
 
         if not validate_context(question, used_chunks):
             print("❌ FALLBACK: validate_context")
-            return fallback_response(question, used_chunks), {"grounded": False}, meta
+            #return fallback_response(question, used_chunks), {"grounded": False}, meta
+            answer, actions = fallback_response(question, used_chunks)
+
+            meta["actions"] = actions   # 🔥 inject here
+
+            return answer, {"grounded": False}, meta
 
 
     # ----------------------------

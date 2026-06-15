@@ -15,6 +15,11 @@ from business.business_config import get_business_config
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
 from business.router import detect_business
+from agent.service_requests import get_all_requests
+from agent.service_requests import update_request_status
+
+from business.hotel.explore import HOTEL_EXPLORE
+from business.hotel.branches import HOTEL_BRANCHES
 
 import math
 def sanitize_for_json(obj):
@@ -98,10 +103,102 @@ def get_welcome(business_id: str):
     }
 
 
+from pydantic import BaseModel
+
+from agent.service_requests import create_service_request
+
+
+class ServiceRequest(BaseModel):
+
+    room: str
+    request: str
+    client_id: str
+
+@app.post("/service-request")
+
+def service_request(req: ServiceRequest):
+
+    result = create_service_request(
+        req.room,
+        req.request,
+        req.client_id
+    )
+
+    return {
+        "success": True,
+        "request": result
+    }
+
+
+@app.get("/requests")
+
+def requests():
+
+    return get_all_requests()
+
+class RequestStatusUpdate(BaseModel):
+
+    request_id: str
+
+    status: str
+
+@app.patch("/request-status")
+
+def request_status(req: RequestStatusUpdate):
+
+    updated = update_request_status(
+        req.request_id,
+        req.status
+    )
+
+    if not updated:
+
+        return {
+            "success": False,
+            "message": "Request not found"
+        }
+
+    return {
+        "success": True,
+        "request": updated
+    }
+
+@app.get("/explore/{client_id}")
+def explore_places(client_id: str):
+
+    places = HOTEL_EXPLORE.get(
+        client_id.lower(),
+        []
+    )
+    return{
+        "places": places
+    }
+
+@app.get("/branches/{client_id}")
+
+def hotel_branches(client_id: str):
+
+    branches = HOTEL_BRANCHES.get(
+        client_id.lower(),
+        []
+    )
+
+    return {
+        "branches": branches
+    }
+
 # ------------------------------
 # Upload document(chnage it to include business-id for multi tenant architecture)
 # ------------------------------
 DATA_DIR = "data/documents"
+
+
+import os
+
+
+
+
+
 
 @app.post("/{business_id}/{client_id}/upload")
 def upload_document(
@@ -243,7 +340,7 @@ def query_with_agent(
     # )
     executor = AgentExecutor(agent, index)
 
-    result = executor.run(req.question, business_id)
+    result = executor.run(req.question, business_id, client_id)
 
     if result is None:
         print("❌ ERROR: executor returned None")

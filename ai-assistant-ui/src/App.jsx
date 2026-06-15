@@ -20,15 +20,21 @@
 
 // export default App
 
-import ChatWindow from "./components/chat/ChatWindow"
+// import ChatWindow from "./components/chat/ChatWindow"
+import RequestsPanel from "./components/hotel/RequestsPanel"
+import HotelLayout from "./modules/hotel/HotelLayout"
+// import ExplorePanel from "./components/hotel/ExplorePanel"
+// import BranchesPanel from "./components/hotel/BranchesPanel"
 import Sidebar from "./components/Sidebars/Sidebar"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import { useEffect } from "react"
 
 function App() {
 
   const params = useParams()
+  const location = useLocation()
 
   const [business, setBusiness] = useState("hotel")
   const [client, setClient] = useState("taj")
@@ -42,29 +48,43 @@ function App() {
   },  [params.business, params.client])
 
   return (
-    <div className="app-layout">
 
-      {/* SIDEBAR */}
-      {!(params.business && params.client) && (
-        <Sidebar
-          business={business}
-          setBusiness={setBusiness}
-          client={client}
-          setClient={setClient}
-          sidebarOpen={sidebarOpen}
-        />
-      )}
+  <>
+  
+    {location.pathname === "/admin" ? (
 
-      {/* CHAT */}
-      <ChatWindow
-        business={business}
-        client={client}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-      />
+      <RequestsPanel />
 
-    </div>
+    ) : (
+
+      <div className="app-layout">
+
+        {/* SIDEBAR */}
+        {!(params.business && params.client) && (
+          <Sidebar
+            business={business}
+            setBusiness={setBusiness}
+            client={client}
+            setClient={setClient}
+            sidebarOpen={sidebarOpen}
+          />
+        )}
+
+        {/* BUSINESS LAYOUT */}
+        {business === "hotel" && (
+          <HotelLayout
+            business={business}
+            client={client}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+          />
+        )}
+
+      </div>
+
+    )}
+
+  </>
   )
 }
-
 export default App
