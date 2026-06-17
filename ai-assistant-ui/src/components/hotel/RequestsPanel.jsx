@@ -15,7 +15,7 @@ export default function RequestsPanel() {
     try {
 
       const res = await fetch(
-        "http://localhost:8000/requests"
+        "https://llm-rag-document-qa-3.onrender.com/requests"
       )
 
       const data = await res.json()
@@ -61,7 +61,7 @@ export default function RequestsPanel() {
   const completeRequest = async (requestId) => {
 
     await fetch(
-      "http://localhost:8000/request-status",
+      "https://llm-rag-document-qa-3.onrender.com/request-status",
       {
 
         method: "PATCH",

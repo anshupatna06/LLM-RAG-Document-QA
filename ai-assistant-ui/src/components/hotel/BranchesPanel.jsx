@@ -14,7 +14,7 @@ export default function BranchesPanel({ client }) {
   const loadBranches = async () => {
 
     const res = await fetch(
-      `http://localhost:8000/branches/${client}`
+      `https://llm-rag-document-qa-3.onrender.com/branches/${client}`
     )
 
     const data = await res.json()

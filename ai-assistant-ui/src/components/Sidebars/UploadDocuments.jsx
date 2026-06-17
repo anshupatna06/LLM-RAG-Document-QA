@@ -18,7 +18,7 @@ export default function UploadDocuments({business, client}){
     try{
 
       await axios.post(
-        `http://localhost:8000/${business}/${client}/upload`,
+        `https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`,
         formData
       )
 

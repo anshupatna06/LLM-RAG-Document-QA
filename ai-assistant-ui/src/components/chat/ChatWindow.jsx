@@ -106,7 +106,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
   useEffect(() => {
 
-    fetch("http://localhost:8000")
+    fetch("https://llm-rag-document-qa-3.onrender.com")
       .then(res=>res.json())
       .then(data=>{
 
@@ -294,7 +294,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
     try {
 
-      await fetch(`http://localhost:8000/${business}/${client}/upload`, {
+      await fetch(`https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`, {
         method: "POST",
         body: formData
       })
@@ -352,7 +352,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
     // 💬 WHATSAPP
     if (action.type === "whatsapp") {
 
-      fetch("http://localhost:8000/service-request", {
+      fetch("https://llm-rag-document-qa-3.onrender.com/service-request", {
 
         method: "POST",
 
@@ -505,6 +505,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
         {/* INPUT */}
         <input
+          className="message-input"
           placeholder={`Ask the ${business}/${client} assistant...`}
           onKeyDown={(e)=>{
 

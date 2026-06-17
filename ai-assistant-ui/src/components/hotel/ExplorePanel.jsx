@@ -14,7 +14,7 @@ export default function ExplorePanel({ client }) {
   const loadPlaces = async () => {
 
     const res = await fetch(
-      `http://localhost:8000/explore/${client}`
+      `https://llm-rag-document-qa-3.onrender.com/explore/${client}`
     )
 
     const data = await res.json()

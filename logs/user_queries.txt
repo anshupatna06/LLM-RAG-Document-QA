@@ -702,3 +702,18 @@ Do you offer vegetarian breakfast?
 What time is breakfast served?
 Check-in time?
 Check-in time?
+Check-in time?
+towel
+कौन-कौन सी सुविधाएँ उपलब्ध हैं?
+कौन-कौन सी सुविधाएँ उपलब्ध हैं?
+क्या शीघ्र बुकिंग आवश्यक है?
+towel
+क्या शीघ्र बुकिंग आवश्यक है?
+कौन-कौन सी सुविधाएँ उपलब्ध हैं?
+क्या आपके पास डीलक्स कमरे हैं?
+Check-in time?
+कौन-कौन सी सुविधाएँ उपलब्ध हैं?
+क्या आपके पास डीलक्स कमरे हैं?
+प्रति रात्रि कीमत क्या है?
+Check-in time?
+Check-in time?
