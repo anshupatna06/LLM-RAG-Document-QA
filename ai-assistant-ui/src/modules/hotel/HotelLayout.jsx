@@ -39,6 +39,13 @@ export default function HotelLayout(props) {
         }`}
       >
 
+        <button
+          className="close-sidebar"
+          onClick={() => setSidebarOpen(false)}
+        >
+          ✕
+        </button>
+
         <ExplorePanel client={props.client} />
 
         <BranchesPanel client={props.client} />
