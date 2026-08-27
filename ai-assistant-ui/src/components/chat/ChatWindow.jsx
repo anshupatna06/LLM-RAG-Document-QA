@@ -106,7 +106,7 @@ export default function ChatWindow({business, client, adminSidebarOpen, setAdmin
 
   useEffect(() => {
 
-    fetch("https://llm-rag-document-qa-3.onrender.com")
+    fetch("http://localhost:8000")
       .then(res=>res.json())
       .then(data=>{
 
@@ -294,7 +294,7 @@ export default function ChatWindow({business, client, adminSidebarOpen, setAdmin
 
     try {
 
-      await fetch(`https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`, {
+      await fetch(`http://localhost:8000/${business}/${client}/upload`, {
         method: "POST",
         body: formData
       })
@@ -355,7 +355,7 @@ export default function ChatWindow({business, client, adminSidebarOpen, setAdmin
       console.log("🚀 WHATSAPP ACTION TRIGGERED")
       console.log("ACTION SENT TO BACKEND:", action)
 
-      fetch("https://llm-rag-document-qa-3.onrender.com/service-request", {
+      fetch("http://localhost:8000/service-request", {
 
         method: "POST",
 
@@ -485,6 +485,13 @@ export default function ChatWindow({business, client, adminSidebarOpen, setAdmin
         <h2>{business} Assistant</h2>
       </div>
 
+      <button
+        className="mobile-explore-trigger"
+        onClick={() => setExplorePanelOpen(true)}
+        aria-label="Explore nearby"
+      >
+        📍 
+      </button>
 
 
       {isEmpty && (
