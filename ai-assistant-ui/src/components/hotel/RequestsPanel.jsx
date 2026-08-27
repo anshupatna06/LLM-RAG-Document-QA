@@ -20,7 +20,7 @@ export default function RequestsPanel({client}) {
       setError(null)
 
       const res = await fetch(
-        "http://localhost:8000/requests"
+        "https://llm-rag-document-qa-3.onrender.com/requests"
       )
 
       if (!res.ok) {
@@ -73,7 +73,7 @@ export default function RequestsPanel({client}) {
     try {
 
       const res = await fetch(
-        "http://localhost:8000/request-status",
+        "https://llm-rag-document-qa-3.onrender.com/request-status",
         {
 
           method: "PATCH",
