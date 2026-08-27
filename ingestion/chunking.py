@@ -1,5 +1,5 @@
 import re
-
+from agent.utils.query_classifier import resolve_entity_from_text, DOMAIN_ENTITY_REGISTRY
 
 def clean_text(text):
 
@@ -27,15 +27,29 @@ def protect_time(text):
 # ----------------------------------------
 # NEW: SECTION SPLITTING (IMPORTANT 🔥)
 # ----------------------------------------
+# def split_into_sections(text):
+
+#     # split when a heading-like pattern appears
+#     sections = re.split(
+#         r'(?=\n?[A-Z][A-Za-z\s]{3,}\n)',
+#         text
+#     )
+
+#     return [s.strip() for s in sections if len(s.strip()) > 30]
+
 def split_into_sections(text):
 
-    # split when a heading-like pattern appears
     sections = re.split(
-        r'(?=\n?[A-Z][A-Za-z\s]{3,}\n)',
+        #r'(?=\n?[A-Z][A-Za-z\s&]{3,}\n)',
+        r'(?m)(?=^[ \t]*[A-Z][A-Za-z&]*(?:[ \t]+[A-Za-z&]+)*[ \t]*$)',
         text
     )
 
-    return [s.strip() for s in sections if len(s.strip()) > 30]
+    return [
+        s.strip()
+        for s in sections
+        if s.strip()
+    ]
 
 
 def fix_time_fragments(text):
@@ -76,20 +90,60 @@ def fix_time_fragments(text):
 
 #     return [s.strip() for s in sentences if len(s.strip()) > 20]
 
+# def split_into_sentences(text):
+#     # 🔥 KEEP SENTENCES INTACT
+#     sentences = text.split("\n")
+
+#     cleaned = []
+
+#     for s in sentences:
+#         s = s.strip()
+
+#         # ❌ DO NOT DROP SHORT LINES
+#         if len(s) < 3:
+#             continue
+
+#         cleaned.append(s)
+
+# #     return cleaned
+
+# def split_into_sentences(text):
+
+#     sentences = re.split(r'\r?\n+', text)
+
+#     return [
+#         s.strip()
+#         for s in sentences
+#         if len(s.strip()) >= 3
+#     ]
+
 def split_into_sentences(text):
-    # 🔥 KEEP SENTENCES INTACT
+
+    print("\n" + "=" * 70)
+    print("INPUT TO split_into_sentences")
+    print(repr(text))
+    print("=" * 70)
+
     sentences = text.split("\n")
+
+    print("RAW SPLIT:")
+    for i, s in enumerate(sentences):
+        print(i, repr(s))
 
     cleaned = []
 
     for s in sentences:
+
         s = s.strip()
 
-        # ❌ DO NOT DROP SHORT LINES
         if len(s) < 3:
             continue
 
         cleaned.append(s)
+
+    print("\nFINAL SENTENCES:")
+    for i, s in enumerate(cleaned):
+        print(i, repr(s))
 
     return cleaned
 
@@ -137,6 +191,68 @@ def restore_structure_for_lists(text):
 
 
 
+# def clean_chunk_text(text):
+
+#     lines = re.split(r'(?:\n|•)', text)
+
+#     clean_lines = []
+
+#     for line in lines:
+
+#         line = line.strip()
+
+#         if len(line) < 5:
+#             continue
+
+#         # remove broken headings
+#         if line.endswith("("):
+#             continue
+
+#         if len(line.split()) <= 2:
+#             continue
+
+#         # ❌ remove broken headings / fragments
+#         if re.match(r'^[A-Za-z\s\-&()]+$', line) and len(line.split()) <= 3:
+#             continue
+
+#         # ❌ remove words like "Grill", "Options"
+#         if len(line.split()) == 1:
+#             continue
+
+#         merged_lines = []
+#         buffer = ""
+
+#         for line in lines:
+
+#             line = line.strip()
+
+#             if not line:
+#                 continue
+
+#             # 🔥 if previous line incomplete → merge
+#             if buffer and not buffer.endswith(('.', ':')):
+#                 buffer += " " + line
+#             else:
+#                 if buffer:
+#                     merged_lines.append(buffer)
+#                 buffer = line
+
+#         if buffer:
+#             merged_lines.append(buffer)
+
+#         lines = merged_lines
+
+#         # if len(line.split()) < 3:
+#         #     continue
+
+#         # normalize dash
+#         line = line.replace("–", "-").replace("—", "-")
+
+#         clean_lines.append(line)
+
+#     return clean_lines    # return LIST instead of string Because we'll further use t = text.lower().replace("\n", " ") in build_time_map function
+
+
 def clean_chunk_text(text):
 
     lines = re.split(r'(?:\n|•)', text)
@@ -147,56 +263,27 @@ def clean_chunk_text(text):
 
         line = line.strip()
 
-        if len(line) < 5:
+        if not line:
             continue
 
-        # remove broken headings
+        # Remove extremely short fragments only
+        if len(line) < 3:
+            continue
+
+        # Remove obviously broken heading fragments
         if line.endswith("("):
             continue
 
-        if len(line.split()) <= 2:
-            continue
-
-        # ❌ remove broken headings / fragments
-        if re.match(r'^[A-Za-z\s\-&()]+$', line) and len(line.split()) <= 3:
-            continue
-
-        # ❌ remove words like "Grill", "Options"
-        if len(line.split()) == 1:
-            continue
-
-        merged_lines = []
-        buffer = ""
-
-        for line in lines:
-
-            line = line.strip()
-
-            if not line:
-                continue
-
-            # 🔥 if previous line incomplete → merge
-            if buffer and not buffer.endswith(('.', ':')):
-                buffer += " " + line
-            else:
-                if buffer:
-                    merged_lines.append(buffer)
-                buffer = line
-
-        if buffer:
-            merged_lines.append(buffer)
-
-        lines = merged_lines
-
-        # if len(line.split()) < 3:
-        #     continue
-
-        # normalize dash
-        line = line.replace("–", "-").replace("—", "-")
+        # Normalize dashes
+        line = (
+            line
+            .replace("–", "-")
+            .replace("—", "-")
+        )
 
         clean_lines.append(line)
 
-    return clean_lines    # return LIST instead of string Because we'll further use t = text.lower().replace("\n", " ") in build_time_map function
+    return clean_lines
 
 def parse_contact_items(items):
     parsed = []
@@ -623,11 +710,29 @@ def process_documents(documents, business_id):
     fine_chunks = []     # 🔥 line-level (your current system)
     coarse_chunks = []   # 🔥 section-level (NEW)
     list_chunks = []   # ✅ NEW
+    entity_section_map = {}
 
     for doc in documents:
 
+
+        
+
+
             
         text = clean_text(doc["text"])
+
+        print("\n" + "=" * 80)
+        print("🔎 AFTER clean_text()")
+        print("=" * 80)
+
+        print(
+            "SWIMMING POOL FOUND:",
+            "swimming pool" in text.lower()
+        )
+
+        for line in text.splitlines():
+            if "swimming" in line.lower() or "pool" in line.lower():
+                print("MATCH:", repr(line))
 
         # 🔥 TWO VERSIONS
         text_for_time = text                     # original (safe)
@@ -635,7 +740,34 @@ def process_documents(documents, business_id):
         text_for_list = text
 
         text_for_time = protect_day_ranges(text_for_time)
+
+        print("\n" + "=" * 80)
+        print("🔎 AFTER protect_day_ranges()")
+        print("=" * 80)
+
+        print(
+            "SWIMMING POOL FOUND:",
+            "swimming pool" in text_for_time.lower()
+        )
+
+        for line in text_for_time.splitlines():
+            if "swimming" in line.lower() or "pool" in line.lower():
+                print("MATCH:", repr(line))
+
         text_for_list = protect_day_ranges(text_for_list)
+
+        print("\n" + "=" * 80)
+        print("🔎 AFTER protect_day_ranges() FOR LIST")
+        print("=" * 80)
+
+        print(
+            "SWIMMING POOL FOUND:",
+            "swimming pool" in text_for_list.lower()
+        )
+
+        for line in text_for_list.splitlines():
+            if "swimming" in line.lower() or "pool" in line.lower():
+                print("MATCH:", repr(line))
 
         print("\n🔍 RAW TEXT FOR LIST:\n", text_for_list[:500])
         source = doc["source"]
@@ -644,6 +776,106 @@ def process_documents(documents, business_id):
         # 🔥 LIST BLOCK EXTRACTION (NEW)
         # -----------------------------
         list_blocks = extract_bullet_lists(text_for_list)
+
+        for block in list_blocks:
+
+            section = block["title"].strip().lower()
+
+            for item in block.get("items", []):
+
+                entity = resolve_entity_from_text(
+                    item,
+                    DOMAIN_ENTITY_REGISTRY
+                )
+
+                if entity:
+
+                    entity_section_map[entity] = section
+
+                    print(
+                        "🧠 ENTITY → DOCUMENT SECTION:",
+                        repr(item),
+                        "→",
+                        entity,
+                        "→",
+                        section
+                    )
+
+        print("\n========== ENTITY → SECTION MAP ==========")
+
+        for entity, section in entity_section_map.items():
+            print(
+                repr(entity),
+                "→",
+                repr(section)
+            )
+
+
+        item_section_map = {}
+
+        for block in list_blocks:
+
+            section = block["title"].strip().lower()
+
+            for item in block.get("items", []):
+
+                normalized_item = item.strip().lower()
+
+                item_section_map[normalized_item] = section
+
+
+        print("\n========== ITEM → SECTION MAP ==========")
+
+        for item, section in item_section_map.items():
+            if (
+                "laundry" in item
+                or "swimming" in item
+                or "room service" in item
+            ):
+                print(repr(item), "→", section)
+
+
+
+        for block in list_blocks:
+
+            section_name = block["title"]
+
+            print(
+                "SECTION:",
+                section_name
+            )
+
+            for item in block["items"]:
+
+                if (
+                    "laundry" in item.lower()
+                    or "swimming" in item.lower()
+                    or "room service" in item.lower()
+                ):
+                    print(
+                        "MATCH:",
+                        item,
+                        "→",
+                        section_name
+                    )
+
+        print("\n" + "=" * 80)
+        print("🔎 LIST EXTRACTION")
+        print("=" * 80)
+
+        for block in list_blocks:
+
+            print("TITLE:", block["title"])
+
+            for item in block["items"]:
+
+                if (
+                    "swimming" in item.lower()
+                    or "pool" in item.lower()
+                ):
+                    print("🏊 SWIMMING POOL LIST ITEM:", repr(item))
+
+
         print("\n🧩 LIST BLOCKS DETECTED:", list_blocks)
         print("\n🧩 LIST BLOCKS DETECTED:")
         for block in list_blocks:
@@ -678,10 +910,82 @@ def process_documents(documents, business_id):
         # -----------------------------
         # COARSE CHUNKS (LIST)
         # -----------------------------
+
+        print("\n" + "=" * 80)
+        print("🔎 INPUT TO split_into_sections()")
+        print("=" * 80)
+        
+        for line in text_for_list.splitlines():
+        
+            if "swimming" in line.lower() or "pool" in line.lower():
+                print("🏊 SECTION INPUT:", repr(line))
+
         sections = split_into_sections(text_for_list)
+
+        # print("\n" + "=" * 80)
+        # print("🔎 OUTPUT OF split_into_sections()")
+        # print("=" * 80)
+
+        # print("NUMBER OF SECTIONS:", len(sections))
+
+        # for i, sec in enumerate(sections):
+
+        #     print(f"\n--- SECTION {i} ---")
+        #     print(repr(sec[:300]))
+
+        #     if "swimming pool" in sec.lower():
+        #         print("🏊🏊🏊 SWIMMING POOL SURVIVED SECTION SPLIT")
+
+
+        print("\n========== SECTION → FINE CONTEXT DEBUG ==========")
+
+        for section_text in sections:
+
+            section_name = detect_section(section_text)
+
+            print("\nSECTION:", repr(section_name))
+            print("TEXT:", repr(section_text[:200]))
+
+        
 
         if not sections or len(sections) <= 1:
             sections = split_into_sentences(text_for_list)
+
+            # print("\n" + "=" * 80)
+            # print("🔎 OUTPUT OF split_into_sentences()")
+            # print("=" * 80)
+
+            # for i, sec in enumerate(time_sections):
+
+            #     if (
+            #         "swimming" in sec.lower()
+            #         or "pool" in sec.lower()
+            #     ):
+            #         print("🏊 FOUND IN SENTENCE:", i)
+            #         print(repr(sec))
+
+
+        print("☠️☠️☠️☠️☠️☠️☠️☠️")
+        print(
+            resolve_entity_from_text(
+                    "Indoor swimming pool",
+                    DOMAIN_ENTITY_REGISTRY
+                )
+            )
+        
+        print(
+                resolve_entity_from_text(
+                    "Laundry and dry cleaning",
+                    DOMAIN_ENTITY_REGISTRY
+                )
+            )
+        
+        print(
+                resolve_entity_from_text(
+                    "Room service available from 6:00 AM - 11:00 PM",
+                    DOMAIN_ENTITY_REGISTRY
+                )
+            )
 
         for sec in sections:
 
@@ -703,91 +1007,252 @@ def process_documents(documents, business_id):
                 "business_id": business_id,
                 "section": section_name
             })
-            # REMOVE DUPLICATES
-            seen = set()
-            unique_coarse = []
 
-            for c in coarse_chunks:
-                if c["text"] not in seen:
-                    unique_coarse.append(c)
-                    seen.add(c["text"])
-
-            coarse_chunks = unique_coarse
+            
 
 
             # # -----------------------------
             # # FINE CHUNK
             # # -----------------------------
-            time_sections = split_into_sentences(text_for_time)
 
-            for sec in time_sections:
+            # print("\n" + "=" * 80)
+            # print("🔎 BEFORE split_into_sentences()")
+            # print("=" * 80)
 
-                lines = clean_chunk_text(sec)
+            # print(
+            #     "SWIMMING POOL FOUND:",
+            #     "swimming pool" in text_for_time.lower()
+            # )
 
-                for i, line in enumerate(lines):
+        # REMOVE DUPLICATES
+        seen = set()
+        unique_coarse = []
+        
+        for c in coarse_chunks:
+            if c["text"] not in seen:
+                unique_coarse.append(c)
+                seen.add(c["text"])
 
-                    line = line.replace("__TIME__", "").replace("_to_", " to ")
-                    line = line.strip()
+            # key = (
+            #     chunk["text"],
+            #     chunk["business_id"],
+            #     chunk["section"]
+            # )
 
-                    if len(line) < 3:
-                        continue
+            # if key in seen:
+            #     continue
 
-                    # 🔥 MERGE "Sunday" + "Closed"
-                    DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
-                    if re.match(rf'^({"|".join(DAYS)})$', line.lower()):
-                        if i + 1 < len(lines):
-                            next_line = lines[i + 1].strip()
-                            if "closed" in next_line.lower():
-                                line = f"{line}: Closed"
+            # seen.add(key)
+            # unique_coarse.append(chunk)
+        
+        coarse_chunks = unique_coarse
 
-                    # 🔥 CAPTURE CLOSED (NOW WILL WORK)
-                    if re.search(r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday).*closed', line, re.I):
 
-                        fine_chunks.append({
-                            "text": line,
-                            "source": source,
-                            "business_id": business_id,
-                            "section": "hours",
-                            "type": "time"
-                        })
-
-                        continue  # 🔥 avoid duplicate append
-
-                    # -------------------------
-                    # NORMAL FLOW
-                    # -------------------------
-                    if len(line) < 8:
-                        continue
-
+        time_sections = split_into_sentences(text_for_time)
+        
+        # print("\n" + "=" * 80)
+        # print("🔎 AFTER split_into_sentences()")
+        # print("=" * 80)
+        
+        # print(
+        #     "SWIMMING POOL FOUND:",
+        #     any(
+        #         "swimming pool" in sec.lower()
+        #         for sec in time_sections
+        #         )
+        #     )
+        
+        # for sec in time_sections:
+        
+        #     if "swimming" in sec.lower() or "pool" in sec.lower():
+        
+        #         print("🏊 SENTENCE CONTAINING POOL:")
+        #         print(repr(sec))
+        
+        for sentence in time_sections:
+        
+            lines = clean_chunk_text(sentence)
+                        
+        
+            # for line in lines:
+        
+            #     if (
+            #         "swimming" in line.lower()
+            #         or "pool" in line.lower()
+            #         ):
+            #         print("🏊 AFTER clean_chunk_text():", repr(line))
+        
+            for i, line in enumerate(lines):
+        
+                line = line.replace("__TIME__", "").replace("_to_", " to ")
+                line = line.strip()
+        
+                if len(line) < 3:
+                    continue
+        
+                # 🔥 MERGE "Sunday" + "Closed"
+                DAYS = ["monday","tuesday","wednesday","thursday","friday","saturday","sunday"]
+                if re.match(rf'^({"|".join(DAYS)})$', line.lower()):
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1].strip()
+                        if "closed" in next_line.lower():
+                            line = f"{line}: Closed"
+        
+                # 🔥 CAPTURE CLOSED (NOW WILL WORK)
+                if re.search(r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday).*closed', line, re.I):
+        
                     fine_chunks.append({
                         "text": line,
                         "source": source,
                         "business_id": business_id,
-                        "section": detect_section(line)
-                    })
+                        "section": "hours",
+                        "type": "time"
+                        })
+        
+                    continue  # 🔥 avoid duplicate append
+        
+                # -------------------------
+                # NORMAL FLOW
+                # -------------------------
+                if len(line) < 8:
+                    continue
 
+                normalized_line = line.strip().lower()
 
-                    if "to" in line.lower():
-                        print("🔥 RANGE CHUNK:", line)
+                section = item_section_map.get(
+                    normalized_line,
+                    detect_section(line)
+                )
+        
+                # fine_chunks.append({
+                #     "text": line,
+                #     "source": source,
+                #     "business_id": business_id,
+                #     "section": section
+                #     })
+
+                chunk = {
+                    "text": line,
+                    "source": source,
+                    "business_id": business_id,
+                    "section": section
+                }
+
+                print("\n" + "=" * 70)
+                print("🧩 CREATING FINE CHUNK")
+                print("=" * 70)
+                print("INPUT LINE :", repr(line))
+                print("CHUNK TEXT :", repr(chunk["text"]))
+                print("SECTION    :", repr(chunk["section"]))
+
+                fine_chunks.append(chunk)
+
+                if (
+                    "laundry" in line.lower()
+                    or "swimming pool" in line.lower()
+                    or "room service" in line.lower()
+                ):
+                    print(
+                        "🎯 FINE CHUNK SECTION:",
+                        repr(line),
+                        "→",
+                        repr(section)
+                    )
+        
+                            
+        
+        
+                if "to" in line.lower():
+                    print("🔥 RANGE CHUNK:", line)
+
+    expected = {
+        "Indoor swimming pool",
+        "Laundry and dry cleaning",
+        "Room service available from 6:00 AM - 11:00 PM"
+    }
+
+    actual = {
+        c["text"]
+        for c in fine_chunks
+    }
+
+    print("\n" + "=" * 70)
+    print("🔬 SENTENCE → FINE CHUNK CONTRACT TEST")
+    print("=" * 70)
+
+    for item in expected:
+        print(
+            repr(item),
+            "→",
+            item in actual
+        )
+        
+    print("\n===== SEARCHING FOR LAUNDRY IN FINE CHUNKS =====")
             
-
-           
+    found = False
+            
+    for chunk in fine_chunks:
+        if "laundry" in chunk["text"].lower():
+            found = True
+            print(chunk)
+            
+            print("FOUND:", found)    
+            print(len(fine_chunks))
+    count = 0
+        
+    for chunk in fine_chunks:
+        if "laundry" in chunk["text"].lower():
+            count += 1
+        
+            print("Laundry Chunks:", count)
+        
+    count = 0
+        
+    for chunk in fine_chunks:
+        if "room service" in chunk["text"].lower():
+            count += 1
+        
+            print("Room Service chunks:", count)    
+        
+                   
     print("🔥 TOTAL CHUNKS CREATED:", len(coarse_chunks))
     print("\n🚨 FINAL LIST_CHUNKS BEFORE RETURN:", len(list_chunks))
 
-    return fine_chunks, coarse_chunks, list_chunks
+
+    print("\n========== FINE CHUNK SECTION DEBUG ==========")
+
+    for chunk in fine_chunks:
+        text = chunk["text"].lower()
+
+        if (
+            "laundry" in text
+            or "swimming pool" in text
+            or "room service" in text
+        ):
+            print(
+                "TEXT:",
+                repr(chunk["text"])
+            )
+            print(
+                "SECTION:",
+                repr(chunk.get("section"))
+            )
+
+    
+    print("\n========== FINAL FINE CHUNK METADATA ==========")
+
+    for c in fine_chunks:
+
+        if (
+            "laundry" in c["text"].lower()
+            or "swimming pool" in c["text"].lower()
+            or "room service" in c["text"].lower()
+        ):
+            print({
+                "text": c["text"],
+                "section": c["section"]
+            })    
+            
+    return fine_chunks, coarse_chunks, list_chunks, entity_section_map
 
 
-# # print("SECTIONS:", len(sections))
-#         # for s in sections[:5]:
-#         #     #print("SEC:", s[:80])
-#         #     #print("TEXT SAMPLE:", text[:300])
-
-#         for sec in sections:
-
-#             #print("RAW SEC:", sec[:100])
-#             s = clean_chunk_text(sec)
-#             s = s.replace("__TIME__", "")
-#             s = s.replace("_to_", " to ")
-#             #print("CLEAN SEC:", s[:100], "| LENGTH:", len(s))
-#             print("SECTIONS:", len(sections))

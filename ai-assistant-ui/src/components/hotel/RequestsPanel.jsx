@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react"
 
-export default function RequestsPanel() {
+export default function RequestsPanel({client}) {
 
   const [requests, setRequests] = useState([])
 
   const [filter, setFilter] = useState("all")
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const hotelName = client || "KANHAIYA"
 
   /* -----------------------------------
       FETCH REQUESTS
@@ -13,10 +17,15 @@ export default function RequestsPanel() {
   const fetchRequests = async () => {
 
     try {
+      setError(null)
 
       const res = await fetch(
-        "https://llm-rag-document-qa-3.onrender.com/requests"
+        "http://localhost:8000/requests"
       )
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch requests")
+      }
 
       const data = await res.json()
 
@@ -29,10 +38,11 @@ export default function RequestsPanel() {
 
     } catch (err) {
 
-      console.log(
-        "Failed to fetch requests",
-        err
+      setError(
+        "Unable to connect to the service request system."
       )
+    }finally{
+      setLoading(false)
     }
   }
 
@@ -58,28 +68,53 @@ export default function RequestsPanel() {
       COMPLETE REQUEST
   ----------------------------------- */
 
-  const completeRequest = async (requestId) => {
+  const updateRequestStatus = async (requestId, status) => {
 
-    await fetch(
-      "https://llm-rag-document-qa-3.onrender.com/request-status",
-      {
+    try {
 
-        method: "PATCH",
+      const res = await fetch(
+        "http://localhost:8000/request-status",
+        {
 
-        headers: {
-          "Content-Type": "application/json"
-        },
+          method: "PATCH",
 
-        body: JSON.stringify({
+          headers: {
+            "Content-Type": "application/json"
+          },
 
-          request_id: requestId,
+          body: JSON.stringify({
 
-          status: "completed"
-        })
+            request_id: requestId,
+
+            status: status
+
+          })
+
+        }
+      )
+
+      const data = await res.json()
+
+
+      if (!res.ok || !data.success) {
+
+        throw new Error(
+          "Failed to update request"
+        )
+
       }
-    )
 
-    fetchRequests()
+      fetchRequests()
+
+    } catch (err) {
+
+      console.error(
+        "Failed to complete request:",
+        err
+      )
+
+    }
+
   }
 
   /* -----------------------------------
@@ -109,10 +144,23 @@ export default function RequestsPanel() {
       return req.status === filter
     })
 
-  const audio =
-    new Audio("/notification.mp3")
+    const getStatusLabel = (status) =>{
+      const labels = {
+        pending : "Pending",
+        in_progress: "In Progress",
+        completed: "Completed"
+      }
 
-  audio.play()
+      return labels[status] || status
+    }
+
+  // const audio =
+  //   new Audio("/notification.mp3")
+
+  // audio.play()
+
+
+
 
   /* -----------------------------------
       UI
@@ -122,27 +170,62 @@ export default function RequestsPanel() {
 
     <div className="requests-page">
 
+      
+
       {/* HEADER */}
-
-      <div className="empty-state">
-
-        <h2>No Active Requests</h2>
-
-        <p>
-          New guest requests will appear here
-        </p>
-
-      </div>
+      {/* LEFT SIDE */}
 
       <div className="requests-header">
 
-        <h1>Service Requests</h1>
+        <div className="requests-title">
+          <p className="dashboard-label">
+            OPERATIONS DASHBOARD
+          </p>
 
-        <p>
-          Track and manage live guest requests
-        </p>
+          <h1>Service Requests</h1>
 
-      </div>
+          <p>
+            Track and manage live guest requests
+          </p>
+        </div>
+
+
+        {/* HOTEL BRANDING */}
+        {/* RIGHT SIDE */}
+
+        <div className="header-actions">
+
+
+          <div className="hotel-brand">
+
+            <div className="hotel-brand-icon">
+              {hotelName.charAt(0).toUpperCase()}
+            </div>
+
+            <div className="hotel-brand-content">
+
+              <span className="hotel-brand-name">
+                {hotelName.toUpperCase()}
+              </span>
+
+              <span className="hotel-brand-subtitle">
+                Guest Service Operations
+              </span>
+
+            </div>
+
+          </div>
+
+          {/* LIVE STATUS */}
+          <div className="live-indicator">
+            <span className="live-dot"></span>
+              Live Updates
+          </div>
+        
+
+        </div>
+
+      </div>  
 
       {/* STATS */}
 
@@ -235,53 +318,105 @@ export default function RequestsPanel() {
               <span
                 className={`status ${req.status}`}
               >
-                {req.status}
+
+                {req.status === "in_progress" && (
+                  <span className="status-dot"></span>
+                )}
+                
+                {getStatusLabel(req.status)}
               </span>
 
             </div>
 
-            {/* ROOM */}
+            
 
-            <h2>
-              Room {req.room}
-            </h2>
-
-            {/* REQUEST */}
-
-            <p
-              className={`request-type ${req.request}`}
-            >
-              {req.request}
+            <p className="request-label">
+              GUEST REQUEST
             </p>
 
-            {/* TIME */}
+            <h2 className="request-title">
+              {req.display_text}
+            </h2>
+
+            <div className="request-room">
+              🛏️ Room {req.room}
+            </div>
 
             <p className="request-time">
-              {req.time}
+              🕒 Received at {req.time}
             </p>
 
             {/* BUTTON */}
 
-            {req.status === "pending" && (
+            < div className = "request-action">
 
-              <button
-                className="complete-btn"
-                onClick={() =>
-                  completeRequest(
-                    req.request_id
-                  )
-                }
-              >
-                Mark Complete
-              </button>
+              {req.status === "pending" && (
 
-            )}
+                <button
+                  className="start-btn"
+                  onClick={() =>
+                    updateRequestStatus(
+                      req.request_id,
+                      "in_progress"
+                    )
+                  }
+                > 
+                  Start Service
+                </button>
 
-          </div>
+              )}
 
-        ))}
+
+
+              {req.status === "in_progress" && (
+
+                <button
+                  className="complete-btn"
+                  onClick={() =>
+                    updateRequestStatus(
+                      req.request_id,
+                      "completed"
+                    )
+                  }
+                >
+                  Mark Complete
+                </button>
+
+              )}
+
+
+              {req.status === "completed" && (
+ 
+                <div className="completed-state">
+
+                  <span className="completed-check">
+                    ✓
+                  </span>
+
+                    Service Completed
+
+                </div>
+
+              )}
+
+              </div>
+            </div>
+
+          ))}
 
       </div>
+
+      {loading && (
+        <div className="dashboard-state">
+          Loading service requests...
+        </div>
+      )}
+
+      {error && (
+        <div className="dashboard-error">
+        {error}
+        </div>
+      )}
 
     </div>
   )

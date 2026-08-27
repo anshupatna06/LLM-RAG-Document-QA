@@ -14,7 +14,7 @@ export default function ExplorePanel({ client }) {
   const loadPlaces = async () => {
 
     const res = await fetch(
-      `https://llm-rag-document-qa-3.onrender.com/explore/${client}`
+      `http://localhost:8000/explore/${client}`
     )
 
     const data = await res.json()
@@ -46,11 +46,20 @@ export default function ExplorePanel({ client }) {
 
           <h3>{place.name}</h3>
 
+          
+
           <p>{place.description}</p>
 
-          <p>📍 {place.distance}</p>
+          <div className="place-meta">
 
-          <p>🕒 {place.timing}</p>
+            <span>
+              📍 {place.distance}
+            </span>
+
+            <span>
+              🕒 {place.timing}
+            </span>
+          </div>
 
           <button
             onClick={() =>

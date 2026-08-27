@@ -4,7 +4,7 @@
 export async function askQuestion(question, business="hotel", client="taj") {
 
   const response = await fetch(
-    `https://llm-rag-document-qa-3.onrender.com/${business}/${client}/query`,
+    `http://localhost:8000/${business}/${client}/query`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -25,7 +25,7 @@ export async function uploadFile(file, business="hotel", client="taj") {
   formData.append("file", file)
 
   const response = await fetch(
-    `https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`,
+    `http://localhost:8000/${business}/${client}/upload`,
     {
       method: "POST",
       body: formData

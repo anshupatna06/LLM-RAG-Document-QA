@@ -34,7 +34,24 @@ class DocumentState:
         # if not docs:
         #     return None
 
-        fine_chunks, coarse_chunks, list_chunks = process_documents(docs, business_id)
+        fine_chunks, coarse_chunks, list_chunks, entity_section_map = process_documents(docs, business_id)
+
+        print("\n" + "=" * 80)
+        print("🔎 SEARCHING FOR SWIMMING POOL IN FINE CHUNKS")
+        print("=" * 80)
+
+        swimming_chunks = [
+            c for c in fine_chunks
+            if "swimming" in c.get("text", "").lower()
+            or "pool" in c.get("text", "").lower()
+        ]
+
+        print("Swimming pool chunks:", len(swimming_chunks))
+
+        for c in swimming_chunks:
+            print(c)
+
+        print("=" * 80)
 
         # 🔥 DEBUG
         for chunk in fine_chunks[:5]:
@@ -76,9 +93,62 @@ class DocumentState:
 
         # -------------------------
         # BM25
-        # -------------------------
+        # # -------------------------
+        # from collections import Counter
+
+        # texts = [c["text"].strip().lower() for c in fine_chunks]
+
+        # counts = Counter(texts)
+
+        # print("\n========== DUPLICATE CHUNK DEBUG ==========")
+
+        # for text, count in counts.items():
+
+        #     if count > 1:
+
+        #         print(
+        #             f"DUPLICATE x{count}:",
+        #             text
+        #         )
+
+        # print("TOTAL FINE CHUNKS:", len(fine_chunks))
+        # print("UNIQUE FINE CHUNKS:", len(counts))
+        # print("==========================================")
+
+        print("\n" + "=" * 80)
+        print("🔎 CHECKING BM25 INPUT")
+        print("=" * 80)
+
+        for i, c in enumerate(fine_chunks):
+            text = c.get("text", "").lower()
+
+        if "swimming" in text or "pool" in text:
+            print("BM25 INPUT INDEX:", i)
+            print("TEXT:", c["text"])
+            print("SOURCE:", c)
+
+
         fine_bm25 = BM25Retriever(fine_chunks)
         coarse_bm25 = BM25Retriever(coarse_chunks)
+
+
+        
+
+        print("\n========== BM25 METADATA ==========")
+
+        for i, chunk in enumerate(fine_bm25.chunks):
+
+            if (
+                "laundry" in chunk["text"].lower()
+                or "swimming pool" in chunk["text"].lower()
+                or "room service" in chunk["text"].lower()
+            ):
+                print(
+                        i,
+                        repr(chunk["text"]),
+                        "→",
+                        chunk.get("section")
+                    )
 
 
         
@@ -86,16 +156,48 @@ class DocumentState:
             "fine_chunks": fine_chunks,
             "coarse_chunks": coarse_chunks,
             "list_chunks": list_chunks,   # ✅ NEW
+            "entity_section_map": entity_section_map,
             "fine_embeddings": fine_embeddings,
             "coarse_embeddings": coarse_embeddings,
             "fine_bm25": fine_bm25,
             "coarse_bm25": coarse_bm25
         }
 
+        print("\n========== INDEX ENTITY SECTION MAP ==========")
+
+        for entity, section in index["entity_section_map"].items():
+            print(
+                entity,
+                "→",
+                section
+            )
+
         print("\n📦 INDEX DEBUG")
         print("Fine chunks:", len(index["fine_chunks"]))
         print("Coarse chunks:", len(index["coarse_chunks"]))
         print("List chunks:", len(index["list_chunks"]))  # ✅ THIS ONE
+
+        print("\n" + "=" * 80)
+        print("📦 FINAL INDEX ASSEMBLY") 
+        print("=" * 80)
+ 
+        print("fine_chunks :", len(fine_chunks))
+        print("coarse_chunks:", len(coarse_chunks))
+
+        print("fine_bm25   :", len(fine_bm25.chunks))
+        print("coarse_bm25 :", len(coarse_bm25.chunks))
+
+        print("\nFINE BM25 TARGET CHECK:")
+
+        for i, c in enumerate(fine_bm25.chunks):
+            if "laundry" in c["text"].lower():
+                print("FOUND IN FINE BM25:", i, repr(c["text"]))
+
+        print("\nCOARSE BM25 TARGET CHECK:")
+
+        for i, c in enumerate(coarse_bm25.chunks):
+            if "laundry" in c["text"].lower():
+                print("FOUND IN COARSE BM25:", i, repr(c["text"]))
 
         # -------------------------
         # RETURN

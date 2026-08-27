@@ -57,7 +57,7 @@ import WelcomeBox from "../shared/WelcomeBox"
 
 
 
-export default function ChatWindow({business, client, sidebarOpen, setSidebarOpen}) {
+export default function ChatWindow({business, client, adminSidebarOpen, setAdminSidebarOpen, explorePanelOpen, setExplorePanelOpen, onOpenExplore}) {
 
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -106,7 +106,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
   useEffect(() => {
 
-    fetch("https://llm-rag-document-qa-3.onrender.com")
+    fetch("http://localhost:8000")
       .then(res=>res.json())
       .then(data=>{
 
@@ -294,7 +294,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
     try {
 
-      await fetch(`https://llm-rag-document-qa-3.onrender.com/${business}/${client}/upload`, {
+      await fetch(`http://localhost:8000/${business}/${client}/upload`, {
         method: "POST",
         body: formData
       })
@@ -352,7 +352,10 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
     // 💬 WHATSAPP
     if (action.type === "whatsapp") {
 
-      fetch("https://llm-rag-document-qa-3.onrender.com/service-request", {
+      console.log("🚀 WHATSAPP ACTION TRIGGERED")
+      console.log("ACTION SENT TO BACKEND:", action)
+
+      fetch("http://localhost:8000/service-request", {
 
         method: "POST",
 
@@ -364,13 +367,49 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
 
           room: roomNumber || "unknown",
           request: action.request_type || "general",
-          client_id: client
+          client_id: client,
+          quantity: action.quantity ?? 1,
+          unit: action.unit ?? null,
+          display_text: 
+            action.display_text ||
+            action.request_type ||
+            "General Request"
         })
       })
-      .then(res => res.json())
+      .then(async res => {
+
+        const data = await res.json()
+
+        console.log(
+          "SERVICE REQUEST STATUS:",
+          res.status
+        )
+
+        console.log(
+          "FULL SERVICE REQUEST RESPONSE:",
+          data
+        )
+
+        if (!res.ok) {
+
+          throw new Error(
+            data.detail
+              ? JSON.stringify(data.detail)
+              : "Failed to create service request"
+          )
+        }
+
+        return data
+      })
+
       .then(data => {
 
-        console.log("REQUEST STORED:", data)
+        if (!data.request?.request_id) {
+
+          throw new Error(
+            "Backend response does not contain request.request_id"
+        )
+      }
 
         setMessages(prev => [
 
@@ -440,7 +479,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
       
 
       <div className="top-bar">
-        <button onClick={()=>setSidebarOpen(prev => !prev)}>
+        <button onClick={()=>setAdminSidebarOpen(prev => !prev)}>
           ☰
         </button>
         <h2>{business} Assistant</h2>
@@ -454,6 +493,7 @@ export default function ChatWindow({business, client, sidebarOpen, setSidebarOpe
           business={business}
           client={client}
           sendMessage={sendMessage}
+          onOpenExplore={onOpenExplore}
         />
 
       )}

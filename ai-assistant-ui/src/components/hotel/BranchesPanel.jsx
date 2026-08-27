@@ -14,7 +14,7 @@ export default function BranchesPanel({ client }) {
   const loadBranches = async () => {
 
     const res = await fetch(
-      `https://llm-rag-document-qa-3.onrender.com/branches/${client}`
+      `http://localhost:8000/branches/${client}`
     )
 
     const data = await res.json()
@@ -41,7 +41,7 @@ export default function BranchesPanel({ client }) {
           <img
             src={branch.image}
             alt={branch.name}
-            width="250"
+            className="branch-image"
           />
 
           <h3>{branch.name}</h3>
@@ -52,7 +52,7 @@ export default function BranchesPanel({ client }) {
 
           <p>📞 {branch.phone}</p>
 
-          <div>
+          <div className="branch-actions">
 
             {/* CALL */}
             <button

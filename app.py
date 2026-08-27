@@ -104,7 +104,7 @@ def get_welcome(business_id: str):
 
 
 from pydantic import BaseModel
-
+from typing import Optional
 from agent.service_requests import create_service_request
 
 
@@ -113,17 +113,34 @@ class ServiceRequest(BaseModel):
     room: str
     request: str
     client_id: str
+    quantity: int = 1
+    unit: Optional[str] = None
+    display_text: str
 
 @app.post("/service-request")
 
 def service_request(req: ServiceRequest):
 
+    print("=" * 70)
+    print("📥 SERVICE REQUEST ENDPOINT HIT")
+    print("REQUEST BODY:", req)
+    print("=" * 70)
+    
+
     result = create_service_request(
         req.room,
         req.request,
-        req.client_id
+        req.client_id,
+        req.quantity,
+        req.unit,
+        req.display_text
     )
 
+    print("=" * 70)
+    print("🔥 CREATED SERVICE REQUEST")
+    print("RESULT:", result)
+    print("=" * 70)
+    
     return {
         "success": True,
         "request": result
@@ -144,24 +161,33 @@ class RequestStatusUpdate(BaseModel):
 
 @app.patch("/request-status")
 
+@app.patch("/request-status")
 def request_status(req: RequestStatusUpdate):
 
-    updated = update_request_status(
+    result = update_request_status(
         req.request_id,
         req.status
     )
 
-    if not updated:
+    if not result["success"]:
+
+        if result["reason"] == "request_not_found":
+
+            return {
+                "success": False,
+                "message": "Request not found"
+            }
 
         return {
             "success": False,
-            "message": "Request not found"
+            "message": "Invalid status"
         }
 
     return {
         "success": True,
-        "request": updated
+        "request": result["request"]
     }
+
 
 @app.get("/explore/{client_id}")
 def explore_places(client_id: str):

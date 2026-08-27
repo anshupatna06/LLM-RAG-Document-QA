@@ -11,8 +11,8 @@ from agent.tools.clarify import clarify
 from agent.tools.suggest import generate_suggestions
 
 from business.business_config import get_business_config
-from agent.utils.intent import detect_intent
-from agent.utils.query_classifier import is_time_query, detect_time_intent, is_list_query, is_binary_question, is_feature_query, detect_query_type, is_contact_query
+#from agent.utils.intent import detect_intent
+from agent.utils.query_classifier import is_time_query, detect_route_intent, detect_domain_entities, is_binary_query, is_feature_query, detect_query_type, is_contact_query, INTENT_REGISTRIES
 # from rag_core import normalize_sub_query
 
 from agent.utils.normalizer import normalize_local_query
@@ -24,7 +24,7 @@ from agent.utils.speech_normalizer import normalize_speech_query
 
 from business.hotel.actions import generate_hotel_actions
 
-from business.hotel.intents import is_hotel_action_query
+from agent.utils.query_classifier import is_hotel_action_query
 from agent.utils.query_classifier import get_fallback_response
 
 DEFAULT_TOP_K = 3
@@ -351,6 +351,31 @@ def is_action_query(query):
 
 #     return q
 
+def inspect_json_types(obj, path="root"):
+
+    if isinstance(obj, dict):
+
+        for key, value in obj.items():
+            inspect_json_types(
+                value,
+                f"{path}.{key}"
+            )
+
+    elif isinstance(obj, (list, tuple)):
+
+        for i, value in enumerate(obj):
+            inspect_json_types(
+                value,
+                f"{path}[{i}]"
+            )
+
+    else:
+
+        print(
+            f"{path}: "
+            f"{type(obj)} → {repr(obj)}"
+        )
+
 
 
 
@@ -524,18 +549,13 @@ class AgentExecutor:
         memory.log("rewrite", rewritten)
 
 
-        intent = detect_intent(rewritten)
-        memory.execution["intent"] = intent
-        memory.log("intent", intent)
+        #intent = detect_intent(rewritten)
+        #memory.execution["intent"] = intent
+        #memory.log("intent", intent)
 
         
 
-        # query_type = detect_query_type(
-        #     translated_query,  # after to_english
-        #     original_query=original_user_query,  # ⚠️ IMPORTANT
-        #     force_binary=force_binary,
-        #     list_chunks=self.index.get("list_chunks", [])
-        # )
+        
         translated_query = normalize_speech_query(translated_query)
         route = detect_query_type(
             translated_query,  # after to_english
@@ -543,6 +563,9 @@ class AgentExecutor:
             force_binary=force_binary,
             list_chunks=self.index.get("list_chunks", [])
         )
+
+        print("ROUTE TYPE:", type(route))
+        print("ROUTE VALUE:", route)
 
         if route == "action":
 
@@ -575,13 +598,28 @@ class AgentExecutor:
         print("ACTION CHECK:", query)
         print("IS ACTION:", is_hotel_action_query(query))
 
-        intent = detect_time_intent(translated_query)
+        #intent = detect_time_intent(translated_query)
+        #registry = INTENT_REGISTRIES[route]
+
+        if route != "general":
+            intent = detect_route_intent(
+                translated_query,
+                route
+            )
+        else:
+            intent = None
 
         #print("🧠 EXECUTOR QUERY TYPE:", query_type)
 
         
 
+        entities = detect_domain_entities(translated_query)
 
+        print("=" * 60)
+        print("ROUTE detected:", route)
+        print("INTENT detected:", intent)
+        print("ENTITIES detected:", entities)
+        print("=" * 60)
 
 
         # --------------------------------------------------
@@ -614,7 +652,8 @@ class AgentExecutor:
                 business_id,
                 memory,
                 route, 
-                intent    # 🔥 ADD THIS
+                intent, 
+                entities = entities   # 🔥 ADD THIS
             )
 
             retrieval_route = route  # since we passed it
@@ -646,8 +685,23 @@ class AgentExecutor:
                 start,
                 memory.config["system_prompt"],
                 memory,
-                query_type = route
+                query_type = route,
+                entities = entities
             )
+
+
+            print("=" * 70)
+            print("AFTER VALIDATE")
+            print("answer:", answer)
+            print("answer type:", type(answer))
+
+            print("validation:", metrics)
+            print("validation type:", type(metrics))
+
+            print("meta:", performance)
+            print("meta type:", type(performance))
+
+            print("=" * 70)
 
             if answer_part:
                 if isinstance(answer_part, dict):
@@ -826,13 +880,13 @@ class AgentExecutor:
         # -----------------------------
         # 🔥 CACHE STORE
         # -----------------------------
-        print("✅ RETURNING RESULT")
+        #print("✅ RETURNING RESULT")
         # if query_type in ["time", "list", "binary"]:
         #     set_cached_response(query, business_id, result)
 
         #     return result
 
-        print("📥 CONTACT CHUNKS:", retrieval.get("chunks"))
+        #print("📥 CONTACT CHUNKS:", retrieval.get("chunks"))
 
         # -----------------------------
         # 🔥 STORE SUB-QUERY CACHE
@@ -854,8 +908,15 @@ class AgentExecutor:
         # -----------------------------
         # ✅ ALWAYS RETURN RESULT
         # -----------------------------
-        print("✅ FINAL RETURN")
-        print("🧠 CACHE SIZE:", len(CACHE))
+        # print("✅ FINAL RETURN")
+        # print("🧠 CACHE SIZE:", len(CACHE))
+
+
+        # print("=" * 80)
+        # print("🔎 FINAL JSON TYPE INSPECTION")
+        # print("=" * 80)
+
+        # inspect_json_types(result)
 
         
         return result

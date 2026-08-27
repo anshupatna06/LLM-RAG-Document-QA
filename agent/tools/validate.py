@@ -7,9 +7,11 @@ from agent.utils.query_classifier import (
     is_time_query,
     detect_time_intent,
     is_list_query,
-    is_binary_question,
+    is_binary_query,
     route_query,
-    is_feature_query
+    is_feature_query,
+    entity_has_evidence,
+    DOMAIN_ENTITY_REGISTRY
 )
 
 
@@ -678,32 +680,117 @@ def extract_core_entity(entity):
 #     return "No"
 
 
-def detect_yes_no(question, chunks):
+# def detect_yes_no(question, chunks):
 
-    context_text = " ".join([
+#     context_text = " ".join([
+#         c.get("text", "").lower()
+#         for c in chunks
+#     ])
+
+#     entity = detect_entity(question) or extract_main_entity(question)
+#     entity = clean_entity(entity)
+
+#     if not entity:
+#         return "No"
+
+#     # 🔥 extract core entity
+#     core = extract_core_entity(entity)
+
+#     # 🔥 strict matching
+#     if semantic_match(core, context_text):
+
+#         if has_negation(core, context_text):
+#             return "No"
+
+#         return "Yes"
+
+#     return "No"
+
+
+# def detect_yes_no(question, chunks):
+
+#     print("\n" + "=" * 70)
+#     print("🔍 BINARY VALIDATION DEBUG")
+#     print("=" * 70)
+
+#     print("QUESTION:", question)
+
+#     context_text = " ".join([
+#         c.get("text", "").lower()
+#         for c in chunks
+#     ])
+
+#     print("CONTEXT:")
+#     print(context_text)
+
+#     entity = detect_entity(question)
+
+#     print("detect_entity():", entity)
+
+#     if not entity:
+#         entity = extract_main_entity(question)
+#         print("extract_main_entity():", entity)
+
+#     entity = clean_entity(entity)
+
+#     print("clean_entity():", entity)
+
+#     core = extract_core_entity(entity)
+
+#     print("extract_core_entity():", core)
+
+#     match = semantic_match(core, context_text)
+
+#     print("semantic_match():", match)
+
+#     negation = has_negation(core, context_text)
+
+#     print("has_negation():", negation)
+
+#     print("=" * 70)
+
+#     if not entity:
+#         return "No"
+
+#     if match:
+
+#         if negation:
+#             return "No"
+
+#         return "Yes"
+
+#     return "No"
+
+
+def detect_yes_no(
+    question,
+    chunks,
+    entities
+):
+
+    context_text = " ".join(
         c.get("text", "").lower()
         for c in chunks
-    ])
+    )
 
-    entity = detect_entity(question) or extract_main_entity(question)
-    entity = clean_entity(entity)
-
-    if not entity:
+    if not entities:
         return "No"
 
-    # 🔥 extract core entity
-    core = extract_core_entity(entity)
+    entity = entities[0]
 
-    # 🔥 strict matching
-    if semantic_match(core, context_text):
+    if not entity_has_evidence(
+        entity,
+        chunks
+    ):
+        return "No"
 
-        if has_negation(core, context_text):
-            return "No"
+    if has_negation(
+        entity,
+        context_text
+    ):
+        return "No"
 
-        return "Yes"
-
-    return "No"
-
+    return "Yes"
 
 
 
@@ -1234,7 +1321,8 @@ def validate_answer(
     start_time,
     system_prompt,
     memory,
-    query_type = None
+    query_type = None,
+    entities = None
 ):
     
     
@@ -1378,11 +1466,11 @@ def validate_answer(
     
 
     is_list = is_list_query(question)
-    is_binary = is_binary_question(question)
+    is_binary = is_binary_query(question)
     is_time = is_time_query(question)
     is_feature = is_feature_query(question)
 
-    if is_binary_question(question):
+    if is_binary_query(question):
         query_type = "binary"
 
     elif is_time_query(question):
@@ -1425,27 +1513,61 @@ def validate_answer(
     # BINARY
     # ----------------------------
     if is_binary:
-        yn = detect_yes_no(question, used_chunks)
+
+        print("=" * 70)
+        print("BINARY RESPONSE DEBUG")
+        print("entities:", entities)
+        print("entities type:", type(entities))
+        yn = detect_yes_no(question, used_chunks, entities)
+
+        print("yn:", yn)
+        print("yn type:", type(yn))
+
+        print("=" * 70)
 
         if yn:
-            entity = extract_main_entity(question) or "it"
-            entity = entity.strip()
+            entity = entities[0] if entities else "it"
 
-            # 🔥 clean grammar
-            entity = entity.replace("  ", " ")
+            config = DOMAIN_ENTITY_REGISTRY.get(entity)
+
+            if config:
+                display_name = config.get("display_name", entity)
+            else:
+                display_name = entity
+
 
             if yn == "Yes":
-                answer = f"Yes, {entity} is available."
+                answer = f"Yes, {display_name} is available."
             else:
-                answer = f"No, {entity} is not available."
+                answer = f"No, {display_name} is not available."
 
-            # answer = (
-            #     f"Yes, {entity} is available."
-            #     if yn.lower().startswith("yes")
-            #     else f"No, {entity} is not available."
-            # )
+            print("answer:", answer)
+            print("answer type:", type(answer))
+    
+            meta["grounded"] = True
+            
+            print("meta:", meta)
+            print("meta types:", {
+                k: type(v)
+                for k, v in meta.items()
+            })
 
-            return answer, {"grounded": True}, meta
+            result = (answer, {"grounded": True}, meta)
+
+            print("=" * 70)
+            print("FINAL VALIDATION RETURN")
+            print("result:", result)
+            print("result type:", type(result))
+            print("element types:", [type(x) for x in result])
+            print("=" * 70)
+
+            return result
+
+            #return answer, {"grounded": True}, meta
+
+            
+
+            
         
     
     

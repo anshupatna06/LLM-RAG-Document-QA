@@ -38,7 +38,8 @@ function App() {
 
   const [business, setBusiness] = useState("hotel")
   const [client, setClient] = useState("taj")
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [adminSidebarOpen, setAdminSidebarOpen] = useState(true)
+  const [explorePanelOpen, setExplorePanelOpen] = useState(true)
 
   useEffect(() => {
     if (params.business && params.client) {
@@ -53,7 +54,7 @@ function App() {
   
     {location.pathname === "/admin" ? (
 
-      <RequestsPanel />
+      <RequestsPanel/>
 
     ) : (
 
@@ -66,7 +67,7 @@ function App() {
             setBusiness={setBusiness}
             client={client}
             setClient={setClient}
-            sidebarOpen={sidebarOpen}
+            sidebarOpen={adminSidebarOpen}
           />
         )}
 
@@ -75,8 +76,11 @@ function App() {
           <HotelLayout
             business={business}
             client={client}
-            sidebarOpen={sidebarOpen}
-            setSidebarOpen={setSidebarOpen}
+            adminSidebarOpen={adminSidebarOpen}
+            setAdminSidebarOpen={setAdminSidebarOpen}
+
+            explorePanelOpen={explorePanelOpen}
+            setExplorePanelOpen={setExplorePanelOpen}
           />
         )}
 
