@@ -7,7 +7,7 @@ export default function DocumentManager(){
 
   useEffect(()=>{
 
-    axios.get("http://localhost:8000")
+    axios.get("https://llm-rag-document-qa-3.onrender.com")
       .then(res=>{
 
         const data = res.data || {}
@@ -31,7 +31,7 @@ export default function DocumentManager(){
   const deleteDoc = async(doc)=>{
 
     await axios.delete(
-      "http://localhost:8000",
+      "https://llm-rag-document-qa-3.onrender.com",
       {data:{filename: doc.name, business: doc.business}}
     )
 
