@@ -914,8 +914,13 @@ input{
 
     flex-shrink: 0;
 
+    top:16px;
+    left:16px;
+
+    z-index:50;
+
     border: 1px solid #334155;
-    border-radius: 12px;
+    border-radius: 16px;
 
     background: #1e293b;
 
